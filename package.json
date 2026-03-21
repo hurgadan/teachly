@@ -1,0 +1,8 @@
+{
+  "name": "teachly",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ]
+}
