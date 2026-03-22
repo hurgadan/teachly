@@ -1,0 +1,162 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - link "Перейти к содержимому" [ref=e4] [cursor=pointer]:
+      - /url: "#main-content"
+    - generic [ref=e31]:
+      - banner [ref=e32]:
+        - generic [ref=e33]:
+          - generic [ref=e34]:
+            - paragraph [ref=e35]: Рабочее пространство
+            - paragraph [ref=e36]: воскресенье, 22 марта
+          - generic [ref=e37]:
+            - button "Открыть уведомления" [ref=e41] [cursor=pointer]:
+              - generic [ref=e42]: ◌
+            - button "Добавить занятие" [ref=e174] [cursor=pointer]:
+              - generic [ref=e175]: +
+      - navigation "Мобильная навигация" [ref=e176]:
+        - generic [ref=e177]:
+          - link "Обзор" [ref=e178] [cursor=pointer]:
+            - /url: /
+          - link "Ученики" [ref=e179] [cursor=pointer]:
+            - /url: /students
+          - link "Группы" [ref=e180] [cursor=pointer]:
+            - /url: /groups
+          - link "Календарь" [ref=e181] [cursor=pointer]:
+            - /url: /calendar
+          - link "Оплаты" [ref=e182] [cursor=pointer]:
+            - /url: /payments
+      - main [ref=e44]:
+        - generic [ref=e45]:
+          - generic [ref=e46]:
+            - generic [ref=e47]:
+              - paragraph [ref=e48]: Концепт / Обзор
+              - heading "Рабочая неделя преподавателя" [level=1] [ref=e49]
+              - paragraph [ref=e50]: Главный экран собирает в одну точку расписание недели, оплатный контекст и ближайшие действия. Фокус на ощущении спокойного контроля, а не перегруженного кабинета.
+            - generic [ref=e51]:
+              - button "Открыть неделю" [ref=e52] [cursor=pointer]
+              - button "Сформировать расписание" [ref=e53] [cursor=pointer]
+          - generic [ref=e54]:
+            - article [ref=e56]:
+              - paragraph [ref=e57]: Занятий на неделе
+              - paragraph [ref=e58]: "18"
+              - paragraph [ref=e59]: 13 индивидуальных и 5 групповых слотов уже подтверждены.
+            - article [ref=e61]:
+              - paragraph [ref=e62]: Ожидается оплат
+              - paragraph [ref=e63]: ₽42 600
+              - paragraph [ref=e64]: 7 учеников закрывают платежи до конца недели.
+            - article [ref=e66]:
+              - paragraph [ref=e67]: Текущая задолженность
+              - paragraph [ref=e68]: ₽9 200
+              - paragraph [ref=e69]: Видно сразу, кому напомнить мягко, а кому уже подтвердить дедлайн.
+            - generic [ref=e71]:
+              - generic [ref=e72]:
+                - generic [ref=e73]:
+                  - paragraph [ref=e74]: Неделя
+                  - heading "Рабочий календарь" [level=2] [ref=e75]
+                - tablist "Режим календаря" [ref=e76]:
+                  - tab "Неделя" [selected] [ref=e77] [cursor=pointer]
+                  - tab "День" [ref=e78] [cursor=pointer]
+              - generic [ref=e79]:
+                - article [ref=e80]:
+                  - generic [ref=e81]:
+                    - paragraph [ref=e82]: Пн
+                    - paragraph [ref=e83]: 23 марта
+                  - generic [ref=e84]:
+                    - article [ref=e85]:
+                      - paragraph [ref=e86]: 10:00
+                      - paragraph [ref=e87]: Анна Петрова
+                      - paragraph [ref=e88]: Индивидуально · B1 · 60 мин
+                    - article [ref=e89]:
+                      - paragraph [ref=e90]: 18:30
+                      - paragraph [ref=e91]: Группа Evening A2
+                      - paragraph [ref=e92]: 4 ученика · 90 мин
+                - article [ref=e93]:
+                  - generic [ref=e94]:
+                    - paragraph [ref=e95]: Вт
+                    - paragraph [ref=e96]: 24 марта
+                  - generic [ref=e97]:
+                    - article [ref=e98]:
+                      - paragraph [ref=e99]: 12:00
+                      - paragraph [ref=e100]: Марат Ильясов
+                      - paragraph [ref=e101]: Подготовка к IELTS · 60 мин
+                    - article [ref=e102]:
+                      - paragraph [ref=e103]: 17:00
+                      - paragraph [ref=e104]: Анна Петрова
+                      - paragraph [ref=e105]: Разговорная практика · 60 мин
+                - article [ref=e106]:
+                  - generic [ref=e107]:
+                    - paragraph [ref=e108]: Ср
+                    - paragraph [ref=e109]: 25 марта
+                  - article [ref=e111]:
+                    - paragraph [ref=e112]: 11:30
+                    - paragraph [ref=e113]: Группа Teens B1
+                    - paragraph [ref=e114]: 5 учеников · 80 мин
+                - article [ref=e115]:
+                  - generic [ref=e116]:
+                    - paragraph [ref=e117]: Чт
+                    - paragraph [ref=e118]: 26 марта
+                  - generic [ref=e119]:
+                    - article [ref=e120]:
+                      - paragraph [ref=e121]: 16:00
+                      - paragraph [ref=e122]: Ольга Соколова
+                      - paragraph [ref=e123]: Индивидуально · A2 · 45 мин
+                    - article [ref=e124]:
+                      - paragraph [ref=e125]: 19:15
+                      - paragraph [ref=e126]: Разовый слот
+                      - paragraph [ref=e127]: Свободно для переноса или доп. занятия
+                - article [ref=e128]:
+                  - generic [ref=e129]:
+                    - paragraph [ref=e130]: Пт
+                    - paragraph [ref=e131]: 27 марта
+                  - article [ref=e133]:
+                    - paragraph [ref=e134]: 09:30
+                    - paragraph [ref=e135]: Кирилл Миронов
+                    - paragraph [ref=e136]: Индивидуально · B2 · 60 мин
+            - complementary [ref=e137]:
+              - generic [ref=e138]:
+                - paragraph [ref=e139]: Следующее действие
+                - heading "Переносы и окна без шума" [level=2] [ref=e140]
+                - paragraph [ref=e141]: Важные исключения вынесены в отдельную карточку, чтобы календарь оставался читаемым.
+                - generic [ref=e142]:
+                  - article [ref=e143]:
+                    - paragraph [ref=e144]: Сегодня 16:00
+                    - paragraph [ref=e145]: Ольга просит сдвинуть занятие на пятницу утром.
+                  - article [ref=e146]:
+                    - paragraph [ref=e147]: Свободное окно 19:15
+                    - paragraph [ref=e148]: Можно предложить перенос без перегрузки недели.
+              - generic [ref=e149]:
+                - generic [ref=e150]:
+                  - generic [ref=e151]:
+                    - paragraph [ref=e152]: Финансовый фокус
+                    - heading "Кому напомнить об оплате" [level=2] [ref=e153]
+                  - link "Все оплаты" [ref=e154] [cursor=pointer]:
+                    - /url: /payments
+                - generic [ref=e155]:
+                  - article [ref=e156]:
+                    - generic [ref=e157]:
+                      - generic [ref=e158]:
+                        - paragraph [ref=e159]: Анна Петрова
+                        - paragraph [ref=e160]: 2 проведенных занятия, платеж до 25 марта
+                      - generic [ref=e161]: ₽4 800
+                  - article [ref=e162]:
+                    - generic [ref=e163]:
+                      - generic [ref=e164]:
+                        - paragraph [ref=e165]: Группа Evening A2
+                        - paragraph [ref=e166]: Ожидание перевода от 2 участников
+                      - generic [ref=e167]: ₽2 400
+                  - article [ref=e168]:
+                    - generic [ref=e169]:
+                      - generic [ref=e170]:
+                        - paragraph [ref=e171]: Ольга Соколова
+                        - paragraph [ref=e172]: Разовый перенос, оплата еще не внесена
+                      - generic [ref=e173]: ₽2 000
+  - generic:
+    - img
+  - generic [ref=e183]:
+    - button "Toggle Nuxt DevTools" [ref=e184] [cursor=pointer]:
+      - img [ref=e185]
+    - generic "Page load time" [ref=e188]:
+      - generic [ref=e189]: "85"
+      - generic [ref=e190]: ms
+    - button "Toggle Component Inspector" [ref=e192] [cursor=pointer]:
+      - img [ref=e193]

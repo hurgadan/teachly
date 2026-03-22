@@ -27,7 +27,4 @@ export class UserEntity {
 
   @UpdateDateColumn({ nullable: false, name: 'updated_at' })
   public updatedAt: Date;
-
-  @OneToMany(() => LinkEntity, (link) => link.user, { eager: false })
-  links?: LinkEntity[];
 }

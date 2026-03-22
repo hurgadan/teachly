@@ -1,4 +1,4 @@
-name = "explorer"
+name = "rexplorer"
 description = "Читает кодовую базу и объясняет, куда именно нужно вносить изменение. Сопоставляет запрос -> модуль -> controller -> service -> repository -> entity/test impact"
 model = "gpt-5.4-codex-spark"
 model_reasoning_effort = "medium"
