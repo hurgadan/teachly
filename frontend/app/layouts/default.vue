@@ -1,15 +1,14 @@
 <template>
-  <div class="shell-grid">
-    <UiSidebarNav />
+  <div class="flex h-dvh bg-base-200">
+    <LayoutSidebarNav class="hidden lg:flex" />
 
-    <div class="mobile-page-shell relative min-w-0">
-      <UiTopBar />
-      <UiMobileNav />
-
-      <main id="main-content" class="mobile-safe-bottom relative mx-auto flex min-h-[calc(100vh-4.5rem)] w-full max-w-[1500px] min-w-0 flex-col px-4 pb-10 pt-6 md:px-6 lg:px-8 lg:pt-8">
+    <div class="flex flex-1 flex-col min-w-0">
+      <LayoutTopBar />
+      <main class="flex-1 overflow-y-auto p-4 lg:p-6 pb-24 lg:pb-6">
         <slot />
-        <div aria-hidden="true" class="mobile-dock-spacer lg:hidden" />
       </main>
     </div>
+
+    <LayoutMobileDock class="lg:hidden" />
   </div>
 </template>

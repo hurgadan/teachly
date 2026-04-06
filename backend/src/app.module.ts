@@ -3,9 +3,9 @@ import { ConfigModule } from '@nestjs/config';
 
 import pinoLogger from './_common/app/app-modules/pino-logger';
 import typeOrm from './_common/app/app-modules/type-orm';
-import { AuthModule } from './auth/auth.module';
+import { AuthModule } from './modules/auth/auth.module';
 import config from './config';
-import { UsersModule } from './users/users.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [

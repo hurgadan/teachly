@@ -1,74 +1,152 @@
 <script setup lang="ts">
-const days = [
-  {
-    label: 'Пн',
-    date: '23 марта',
-    items: [
-      { time: '10:00', title: 'Анна Петрова', meta: 'Занято', tone: 'border-primary/20 bg-primary/8' },
-      { time: '12:30', title: 'Свободный слот', meta: 'Доступен для нового ученика', tone: 'border-dashed border-base-content/18 bg-base-200/80' },
-      { time: '18:30', title: 'Evening A2', meta: 'Группа', tone: 'border-secondary/30 bg-secondary/12' },
-    ],
-  },
-  {
-    label: 'Вт',
-    date: '24 марта',
-    items: [
-      { time: '09:00', title: 'Буфер', meta: '15 минут после утреннего слота', tone: 'border-warning/28 bg-warning/16' },
-      { time: '17:00', title: 'Анна Петрова', meta: 'Повторяющееся занятие', tone: 'border-primary/20 bg-primary/8' },
-    ],
-  },
-  {
-    label: 'Ср',
-    date: '25 марта',
-    items: [
-      { time: '11:30', title: 'Teens B1', meta: 'Материализованный экземпляр серии', tone: 'border-secondary/30 bg-secondary/12' },
-    ],
-  },
-  {
-    label: 'Чт',
-    date: '26 марта',
-    items: [
-      { time: '16:00', title: 'Ольга Соколова', meta: 'Перенос запрошен', tone: 'border-accent/25 bg-accent/10' },
-    ],
-  },
-  {
-    label: 'Пт',
-    date: '27 марта',
-    items: [
-      { time: '10:00', title: 'Анна Петрова', meta: 'Потенциальный перенос', tone: 'border-success/28 bg-success/12' },
-    ],
-  },
+const { weekLessons } = useMockData()
+
+const showCreateLesson = ref(false)
+
+const weekDays = [
+  { label: 'Пн', date: '6 апр', dateStr: '2026-04-06' },
+  { label: 'Вт', date: '7 апр', dateStr: '2026-04-07' },
+  { label: 'Ср', date: '8 апр', dateStr: '2026-04-08' },
+  { label: 'Чт', date: '9 апр', dateStr: '2026-04-09' },
+  { label: 'Пт', date: '10 апр', dateStr: '2026-04-10' },
+  { label: 'Сб', date: '11 апр', dateStr: '2026-04-11' },
 ]
+
+const hours = Array.from({ length: 13 }, (_, i) => i + 8) // 8:00 — 20:00
+const HOUR_HEIGHT = 64 // px per hour (h-16)
+
+function getDayLessons(dateStr: string) {
+  return weekLessons.filter(l => l.date === dateStr)
+}
+
+function getLessonStyle(lesson: { time: string; duration: number }) {
+  const [h, m] = lesson.time.split(':').map(Number)
+  const top = (h - 8) * HOUR_HEIGHT + (m / 60) * HOUR_HEIGHT
+  const height = (lesson.duration / 60) * HOUR_HEIGHT
+  return { top: `${top}px`, height: `${height}px` }
+}
+
+const lessonColors: Record<string, string> = {
+  completed: 'bg-success/15 border-success/30 text-success',
+  scheduled: 'bg-primary/10 border-primary/30 text-primary',
+  cancelled: 'bg-error/10 border-error/30 text-error',
+}
 </script>
 
 <template>
-  <div class="w-full min-w-0">
-    <UiPageHeader
-      title="Календарь"
-    >
-      <div class="flex flex-wrap gap-3">
-        <button class="btn btn-primary" type="button">Свободные окна</button>
-        <button class="btn btn-outline" type="button">Текущая неделя</button>
-      </div>
+  <div>
+    <UiPageHeader title="Календарь">
+      <template #actions>
+        <button class="btn btn-primary btn-sm" @click="showCreateLesson = true">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          Разовое занятие
+        </button>
+      </template>
     </UiPageHeader>
 
-    <section class="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)]">
-      <UiCalendarWeek :days="days" />
+    <!-- Week navigation -->
+    <div class="flex items-center justify-between mb-4">
+      <button class="btn btn-ghost btn-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+        </svg>
+      </button>
+      <div class="text-center">
+        <p class="font-semibold">6 — 11 апреля 2026</p>
+        <p class="text-xs text-base-content/50">Текущая неделя</p>
+      </div>
+      <button class="btn btn-ghost btn-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+        </svg>
+      </button>
+    </div>
 
-      <aside class="space-y-4">
-        <section class="card border border-base-200 bg-base-100 shadow-sm">
-          <div class="card-body">
-          <p class="section-kicker">Легенда состояний</p>
-          <h2 class="text-2xl font-bold">Состояния</h2>
-          <div class="mt-5 space-y-3">
-            <article class="alert border-primary/30 bg-primary/10 text-primary-content">Повторяющееся занятие</article>
-            <article class="alert border-warning/40 bg-warning/15 text-warning-content">Буфер после занятия</article>
-            <article class="alert border-success/35 bg-success/10 text-success-content">Свободный слот</article>
-            <article class="alert border-error/35 bg-error/10 text-error-content">Исключение или перенос</article>
+    <!-- Desktop: Week grid -->
+    <div class="hidden lg:block card bg-base-100 shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <div class="grid min-w-[800px]" :style="{ gridTemplateColumns: '4rem repeat(6, 1fr)' }">
+          <!-- Header row -->
+          <div class="sticky top-0 z-20 bg-base-100 border-b border-base-300 h-12" />
+          <div
+            v-for="day in weekDays"
+            :key="day.dateStr"
+            class="sticky top-0 z-20 bg-base-100 border-b border-l border-base-300 h-12 flex flex-col items-center justify-center"
+          >
+            <span class="text-xs text-base-content/50">{{ day.label }}</span>
+            <span class="text-sm font-medium">{{ day.date }}</span>
           </div>
+
+          <!-- Time column -->
+          <div class="relative">
+            <div v-for="hour in hours" :key="hour" class="h-16 relative">
+              <span class="absolute -top-2.5 right-2 text-[11px] text-base-content/40 font-mono">
+                {{ String(hour).padStart(2, '0') }}:00
+              </span>
+            </div>
           </div>
-        </section>
-      </aside>
-    </section>
+
+          <!-- Day columns -->
+          <div
+            v-for="day in weekDays"
+            :key="`col-${day.dateStr}`"
+            class="relative border-l border-base-300"
+          >
+            <!-- Hour grid lines -->
+            <div
+              v-for="hour in hours"
+              :key="hour"
+              class="h-16 border-b border-base-200"
+            />
+
+            <!-- Lesson blocks -->
+            <div
+              v-for="lesson in getDayLessons(day.dateStr)"
+              :key="lesson.id"
+              :class="['absolute left-0.5 right-0.5 rounded border text-xs p-1.5 overflow-hidden cursor-pointer hover:shadow-md transition-shadow', lessonColors[lesson.status]]"
+              :style="getLessonStyle(lesson)"
+            >
+              <p class="font-medium truncate leading-tight">{{ lesson.title }}</p>
+              <p class="opacity-60 text-[10px] mt-0.5">{{ lesson.time }} · {{ lesson.duration }} мин</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile: Day list -->
+    <div class="lg:hidden space-y-4">
+      <div v-for="day in weekDays" :key="day.dateStr">
+        <h3 class="text-sm font-semibold mb-2">{{ day.label }}, {{ day.date }}</h3>
+        <div v-if="getDayLessons(day.dateStr).length === 0" class="text-sm text-base-content/40 py-2">
+          Нет занятий
+        </div>
+        <div v-else class="space-y-1.5">
+          <div
+            v-for="lesson in getDayLessons(day.dateStr)"
+            :key="lesson.id"
+            class="card bg-base-100 shadow-sm"
+          >
+            <div class="card-body p-3 flex-row items-center gap-3">
+              <div class="text-sm font-mono font-medium w-12 shrink-0 text-base-content/60">
+                {{ lesson.time }}
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium truncate">{{ lesson.title }}</p>
+                <p class="text-xs text-base-content/50">{{ lesson.duration }} мин</p>
+              </div>
+              <span
+                v-if="lesson.status === 'completed'"
+                class="badge badge-xs badge-success"
+              >Проведено</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ModalsCreateLessonModal :open="showCreateLesson" @close="showCreateLesson = false" @created="showCreateLesson = false" />
   </div>
 </template>

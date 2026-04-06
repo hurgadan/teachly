@@ -1,124 +1,129 @@
 <script setup lang="ts">
-const stats = [
-  { label: 'Занятий на неделе', value: '18', detail: '13 индивидуальных и 5 групповых занятий.', tone: 'primary' as const },
-  { label: 'Ожидается оплат', value: '₽42 600', detail: '7 оплат запланированы до конца недели.', tone: 'secondary' as const },
-  { label: 'Текущая задолженность', value: '₽9 200', detail: '6 учеников требуют проверки оплаты.', tone: 'accent' as const },
-]
+const { todayLessons, formatPrice, activeStudentsCount, monthlyIncome, totalDebt, studentsWithDebt, payments } = useMockData()
 
-const days = [
-  {
-    label: 'Пн',
-    date: '23 марта',
-    items: [
-      { time: '10:00', title: 'Анна Петрова', meta: 'Индивидуально · B1 · 60 мин', tone: 'border-primary/20 bg-primary/8' },
-      { time: '18:30', title: 'Группа Evening A2', meta: '4 ученика · 90 мин', tone: 'border-secondary/30 bg-secondary/12' },
-    ],
-  },
-  {
-    label: 'Вт',
-    date: '24 марта',
-    items: [
-      { time: '12:00', title: 'Марат Ильясов', meta: 'Подготовка к IELTS · 60 мин', tone: 'border-accent/25 bg-accent/10' },
-      { time: '17:00', title: 'Анна Петрова', meta: 'Разговорная практика · 60 мин', tone: 'border-primary/20 bg-primary/8' },
-    ],
-  },
-  {
-    label: 'Ср',
-    date: '25 марта',
-    items: [
-      { time: '11:30', title: 'Группа Teens B1', meta: '5 учеников · 80 мин', tone: 'border-secondary/30 bg-secondary/12' },
-    ],
-  },
-  {
-    label: 'Чт',
-    date: '26 марта',
-    items: [
-      { time: '16:00', title: 'Ольга Соколова', meta: 'Индивидуально · A2 · 45 мин', tone: 'border-primary/20 bg-primary/8' },
-      { time: '19:15', title: 'Разовый слот', meta: 'Свободно для переноса или доп. занятия', tone: 'border-dashed border-base-content/20 bg-base-200/65' },
-    ],
-  },
-  {
-    label: 'Пт',
-    date: '27 марта',
-    items: [
-      { time: '09:30', title: 'Кирилл Миронов', meta: 'Индивидуально · B2 · 60 мин', tone: 'border-primary/20 bg-primary/8' },
-    ],
-  },
-]
+const completedToday = todayLessons.filter(l => l.status === 'completed').length
+const scheduledToday = todayLessons.filter(l => l.status === 'scheduled').length
 
-const debtors = [
-  { name: 'Анна Петрова', amount: '₽4 800', note: '2 проведенных занятия, платеж до 25 марта' },
-  { name: 'Группа Evening A2', amount: '₽2 400', note: 'Не оплачены 2 места за текущую неделю' },
-  { name: 'Ольга Соколова', amount: '₽2 000', note: 'Оплата за перенесенное занятие еще не поступила' },
-]
+const statusLabel: Record<string, string> = {
+  completed: 'Проведено',
+  scheduled: 'Запланировано',
+  cancelled: 'Отменено',
+}
+const statusClass: Record<string, string> = {
+  completed: 'badge-success',
+  scheduled: 'badge-info',
+  cancelled: 'badge-error',
+}
 </script>
 
 <template>
-  <div class="w-full min-w-0">
-    <UiPageHeader
-      title="Рабочая неделя"
-    >
-      <NuxtLink class="btn btn-primary" to="/calendar">Открыть календарь</NuxtLink>
-    </UiPageHeader>
+  <div>
+    <UiPageHeader title="Главная" subtitle="Обзор вашего рабочего дня" />
 
-    <section class="dashboard-grid">
-      <div v-for="stat in stats" :key="stat.label" class="col-span-12 md:col-span-4">
-        <UiStatCard :detail="stat.detail" :label="stat.label" :tone="stat.tone" :value="stat.value" />
+    <!-- Stats -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6">
+      <div class="card bg-base-100 shadow-sm">
+        <div class="card-body p-4">
+          <p class="text-xs text-base-content/60 uppercase tracking-wide">Активных учеников</p>
+          <p class="text-2xl font-bold mt-1">{{ activeStudentsCount }}</p>
+        </div>
       </div>
-
-      <div class="dashboard-main">
-        <UiCalendarWeek :days="days" />
+      <div class="card bg-base-100 shadow-sm">
+        <div class="card-body p-4">
+          <p class="text-xs text-base-content/60 uppercase tracking-wide">Занятий сегодня</p>
+          <p class="text-2xl font-bold mt-1">{{ todayLessons.length }}</p>
+          <p class="text-xs text-base-content/50">{{ completedToday }} проведено · {{ scheduledToday }} впереди</p>
+        </div>
       </div>
+      <div class="card bg-base-100 shadow-sm">
+        <div class="card-body p-4">
+          <p class="text-xs text-base-content/60 uppercase tracking-wide">Доход за март</p>
+          <p class="text-2xl font-bold mt-1 text-success">{{ formatPrice(monthlyIncome) }}</p>
+        </div>
+      </div>
+      <div class="card bg-base-100 shadow-sm">
+        <div class="card-body p-4">
+          <p class="text-xs text-base-content/60 uppercase tracking-wide">Общая задолженность</p>
+          <p class="text-2xl font-bold mt-1" :class="totalDebt > 0 ? 'text-error' : ''">{{ formatPrice(totalDebt) }}</p>
+        </div>
+      </div>
+    </div>
 
-      <aside class="dashboard-side space-y-4">
-        <section class="card border border-base-200 bg-base-100 shadow-sm">
-          <div class="card-body">
-          <p class="section-kicker">Сегодня</p>
-          <h2 class="text-2xl font-bold">Изменения в расписании</h2>
-
-          <div class="space-y-3">
-            <article class="alert bg-warning/10 text-warning-content">
-              <div>
-              <p class="text-sm font-semibold">Сегодня 16:00</p>
-              <p class="mt-1 text-sm text-base-content/72">Ольга Соколова просит перенести занятие на пятницу, 10:00.</p>
+    <div class="grid lg:grid-cols-3 gap-4 lg:gap-6">
+      <!-- Today's Schedule -->
+      <div class="lg:col-span-2 card bg-base-100 shadow-sm">
+        <div class="card-body p-4 lg:p-6">
+          <h2 class="card-title text-base">Расписание на сегодня</h2>
+          <div class="divide-y divide-base-200 -mx-4 lg:-mx-6">
+            <div
+              v-for="lesson in todayLessons"
+              :key="lesson.id"
+              class="flex items-center gap-3 px-4 lg:px-6 py-3"
+            >
+              <div class="text-sm font-mono font-medium w-12 shrink-0 text-base-content/70">
+                {{ lesson.time }}
               </div>
-            </article>
-
-            <article class="alert bg-info/10 text-info-content">
-              <div>
-              <p class="text-sm font-semibold">Свободное окно 19:15</p>
-              <p class="mt-1 text-sm text-base-content/72">Окно доступно для переноса или разового занятия.</p>
+              <div class="flex-1 min-w-0">
+                <p class="font-medium text-sm truncate">{{ lesson.title }}</p>
+                <p class="text-xs text-base-content/50">{{ lesson.duration }} мин</p>
               </div>
-            </article>
-          </div>
-          </div>
-        </section>
-
-        <section class="card border border-base-200 bg-base-100 shadow-sm">
-          <div class="card-body">
-          <div class="flex items-center justify-between">
-            <div>
-              <h2 class="text-2xl font-bold">Напоминания об оплате</h2>
+              <span :class="['badge badge-sm', statusClass[lesson.status]]">
+                {{ statusLabel[lesson.status] }}
+              </span>
+              <span v-if="lesson.price > 0" class="text-sm font-medium hidden sm:block">
+                {{ formatPrice(lesson.price) }}
+              </span>
             </div>
-            <NuxtLink class="link-hover text-sm font-semibold text-primary" to="/payments">Все оплаты</NuxtLink>
           </div>
+        </div>
+      </div>
 
-          <div class="space-y-3">
-            <article v-for="person in debtors" :key="person.name" class="card card-border bg-base-100">
-              <div class="card-body gap-2 px-4 py-4">
-              <div class="flex items-start justify-between gap-3">
+      <!-- Sidebar column -->
+      <div class="space-y-4">
+        <!-- Debt alerts -->
+        <div class="card bg-base-100 shadow-sm">
+          <div class="card-body p-4 lg:p-6">
+            <h2 class="card-title text-base">Задолженности</h2>
+            <div v-if="studentsWithDebt.length === 0" class="text-sm text-base-content/50">
+              Нет задолженностей
+            </div>
+            <div v-else class="space-y-2">
+              <NuxtLink
+                v-for="student in studentsWithDebt"
+                :key="student.id"
+                :to="`/students/${student.id}`"
+                class="flex items-center justify-between py-1.5 hover:bg-base-200 -mx-2 px-2 rounded transition-colors"
+              >
+                <span class="text-sm">{{ student.firstName }} {{ student.lastName }}</span>
+                <span class="text-sm font-medium text-error">{{ formatPrice(student.debt) }}</span>
+              </NuxtLink>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent payments -->
+        <div class="card bg-base-100 shadow-sm">
+          <div class="card-body p-4 lg:p-6">
+            <h2 class="card-title text-base">Последние оплаты</h2>
+            <div class="space-y-2">
+              <div
+                v-for="payment in payments.slice(0, 4)"
+                :key="payment.id"
+                class="flex items-center justify-between py-1.5"
+              >
                 <div class="min-w-0">
-                  <p class="truncate text-sm font-semibold">{{ person.name }}</p>
-                  <p class="mt-1 text-sm leading-6 text-base-content/65">{{ person.note }}</p>
+                  <p class="text-sm truncate">{{ payment.studentName }}</p>
+                  <p class="text-xs text-base-content/50">{{ payment.date }} · {{ payment.method }}</p>
                 </div>
-                <span class="text-number shrink-0 whitespace-nowrap text-sm font-bold text-error">{{ person.amount }}</span>
+                <span class="text-sm font-medium text-success shrink-0 ml-2">+{{ formatPrice(payment.amount) }}</span>
               </div>
-              </div>
-            </article>
+            </div>
+            <NuxtLink to="/payments" class="btn btn-ghost btn-sm mt-2 self-start">
+              Все оплаты →
+            </NuxtLink>
           </div>
-          </div>
-        </section>
-      </aside>
-    </section>
+        </div>
+      </div>
+    </div>
   </div>
 </template>

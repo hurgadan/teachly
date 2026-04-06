@@ -1,29 +1,26 @@
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineNuxtConfig({
-  compatibilityDate: '2024-12-01',
-  devtools: { enabled: false },
+  compatibilityDate: '2025-05-01',
+  devtools: { enabled: true },
+  ssr: false,
+
   css: ['~/assets/css/main.css'],
+
+  vite: {
+    plugins: [tailwindcss()],
+  },
+
   app: {
     head: {
       title: 'Teachly',
-      link: [
-        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
-      ],
+      htmlAttrs: {
+        lang: 'ru',
+        'data-theme': 'corporate',
+      },
       meta: [
-        {
-          name: 'viewport',
-          content: 'width=device-width, initial-scale=1, viewport-fit=cover',
-        },
-        {
-          name: 'theme-color',
-          content: '#f6f3ea',
-        },
+        { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       ],
     },
-  },
-  vite: {
-    plugins: [tailwindcss()],
   },
 })

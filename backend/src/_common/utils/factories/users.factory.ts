@@ -3,9 +3,12 @@ import type { TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import type { Repository } from 'typeorm';
 
-import { UserEntity } from '../../../users/dao/user.entity';
+import { UserEntity } from '../../../modules/users/dao/user.entity';
 
-type RequiredUserParams = Omit<UserEntity, 'id' | 'createdAt' | 'updatedAt'>;
+type RequiredUserParams = Omit<
+  UserEntity,
+  'id' | 'createdAt' | 'updatedAt' | 'language' | 'bufferMinutesAfterLesson' | 'workSchedules'
+>;
 
 const getDefaultParam = (): RequiredUserParams => {
   return {
