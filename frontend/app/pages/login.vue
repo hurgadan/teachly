@@ -1,15 +1,27 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'auth' })
 
-const email = ref('anna.ivanova@mail.ru')
+const { login } = useAuth()
+const { show: showToast } = useToast()
+
+const email = ref('')
 const password = ref('')
 const loading = ref(false)
+const error = ref('')
 
 async function handleLogin() {
+  error.value = ''
   loading.value = true
-  await new Promise(r => setTimeout(r, 800))
-  loading.value = false
-  navigateTo('/')
+  try {
+    await login(email.value, password.value)
+    navigateTo('/')
+  } catch (e: any) {
+    error.value = e?.statusCode === 401
+      ? 'Неверный email или пароль'
+      : 'Ошибка при входе. Попробуйте позже.'
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
@@ -17,6 +29,9 @@ async function handleLogin() {
   <div class="card bg-base-100 shadow-sm">
     <div class="card-body p-6">
       <h2 class="text-lg font-semibold text-center mb-4">Вход в систему</h2>
+      <div v-if="error" class="alert alert-error text-sm mb-2">
+        {{ error }}
+      </div>
       <form @submit.prevent="handleLogin" class="grid gap-4">
         <fieldset class="fieldset">
           <legend class="fieldset-legend">Email</legend>

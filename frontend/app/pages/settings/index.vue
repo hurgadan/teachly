@@ -1,24 +1,41 @@
 <script setup lang="ts">
-const { workSchedule } = useMockData()
+import { Language } from '@hurgadan/teachly-contracts'
+import type { WorkSchedule, UpdateWorkScheduleItem } from '@hurgadan/teachly-contracts'
 
-const schedule = ref(workSchedule.map(day => ({
-  ...day,
-  intervals: day.intervals.map(i => ({ ...i })),
-})))
-
-const bufferMinutes = ref(15)
-const bufferOptions = [0, 15, 30, 45, 60]
-
+const { api } = useApi()
+const { user, fetchUser } = useAuth()
 const { show: showToast } = useToast()
 
-function handleSaveProfile() {
-  showToast('Профиль сохранён')
+const WEEK_DAYS = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
+
+const languageOptions = [
+  { value: Language.RU, label: 'Русский' },
+  { value: Language.EN, label: 'English' },
+]
+
+const bufferOptions = [0, 15, 30, 45, 60]
+
+// Profile form
+const profileForm = reactive({
+  language: Language.RU,
+  bufferMinutesAfterLesson: 0,
+})
+
+// Schedule form
+interface ScheduleDay {
+  dayOfWeek: number
+  dayName: string
+  isWorkday: boolean
+  intervals: { startTime: string; endTime: string }[]
 }
 
-function handleSaveSchedule() {
-  showToast('Рабочий график сохранён')
-}
+const schedule = ref<ScheduleDay[]>([])
+const loadingProfile = ref(false)
+const loadingSchedule = ref(false)
+const savingProfile = ref(false)
+const savingSchedule = ref(false)
 
+// Time options for selects
 function timeOptions() {
   const opts: string[] = []
   for (let h = 7; h <= 22; h++) {
@@ -28,11 +45,88 @@ function timeOptions() {
   }
   return opts
 }
-
 const times = timeOptions()
 
+// Init: load data from backend
+onMounted(async () => {
+  await Promise.all([loadProfile(), loadSchedule()])
+})
+
+async function loadProfile() {
+  loadingProfile.value = true
+  try {
+    await fetchUser()
+    if (user.value) {
+      profileForm.language = user.value.language
+      profileForm.bufferMinutesAfterLesson = user.value.bufferMinutesAfterLesson
+    }
+  } finally {
+    loadingProfile.value = false
+  }
+}
+
+async function loadSchedule() {
+  loadingSchedule.value = true
+  try {
+    const data = await api<WorkSchedule[]>('/users/me/work-schedule')
+    schedule.value = WEEK_DAYS.map((dayName, i) => {
+      const existing = data.find(d => d.dayOfWeek === i)
+      return {
+        dayOfWeek: i,
+        dayName,
+        isWorkday: existing?.isWorkday ?? false,
+        intervals: existing?.intervals?.length
+          ? existing.intervals.map(iv => ({ startTime: iv.startTime, endTime: iv.endTime }))
+          : [{ startTime: '09:00', endTime: '18:00' }],
+      }
+    })
+  } finally {
+    loadingSchedule.value = false
+  }
+}
+
+async function handleSaveProfile() {
+  savingProfile.value = true
+  try {
+    await api('/users/me', {
+      method: 'PUT',
+      body: {
+        language: profileForm.language,
+        bufferMinutesAfterLesson: profileForm.bufferMinutesAfterLesson,
+      },
+    })
+    await fetchUser()
+    showToast('Профиль сохранён')
+  } catch {
+    showToast('Ошибка при сохранении профиля')
+  } finally {
+    savingProfile.value = false
+  }
+}
+
+async function handleSaveSchedule() {
+  savingSchedule.value = true
+  try {
+    const schedules: UpdateWorkScheduleItem[] = schedule.value.map(day => ({
+      dayOfWeek: day.dayOfWeek,
+      isWorkday: day.isWorkday,
+      intervals: day.isWorkday ? day.intervals : [],
+    }))
+
+    await api('/users/me/work-schedule', {
+      method: 'PUT',
+      body: { schedules },
+    })
+    showToast('Рабочий график сохранён')
+  } catch {
+    showToast('Ошибка при сохранении графика')
+  } finally {
+    savingSchedule.value = false
+  }
+}
+
 function addInterval(dayIndex: number) {
-  schedule.value[dayIndex].intervals.push({ from: '09:00', to: '13:00' })
+  schedule.value[dayIndex].intervals.push({ startTime: '09:00', endTime: '13:00' })
 }
 
 function removeInterval(dayIndex: number, intervalIndex: number) {
@@ -49,46 +143,55 @@ function removeInterval(dayIndex: number, intervalIndex: number) {
       <div class="card bg-base-100 shadow-sm">
         <div class="card-body p-4 lg:p-6">
           <h3 class="font-semibold mb-4">Профиль преподавателя</h3>
-          <div class="grid gap-4">
-            <div class="flex items-center gap-4 mb-2">
-              <div class="avatar placeholder">
-                <div class="bg-primary text-primary-content w-16 rounded-full">
-                  <span class="text-xl font-medium">АИ</span>
-                </div>
-              </div>
-              <div>
-                <p class="font-medium">Анна Иванова</p>
-                <button class="btn btn-ghost btn-xs mt-1">Изменить фото</button>
-              </div>
-            </div>
-            <div class="grid sm:grid-cols-2 gap-4">
-              <fieldset class="fieldset">
-                <legend class="fieldset-legend">Имя</legend>
-                <input type="text" value="Анна" class="input input-bordered w-full" />
-              </fieldset>
-              <fieldset class="fieldset">
-                <legend class="fieldset-legend">Фамилия</legend>
-                <input type="text" value="Иванова" class="input input-bordered w-full" />
-              </fieldset>
-            </div>
+          <div v-if="loadingProfile" class="flex justify-center py-8">
+            <span class="loading loading-spinner loading-md" />
+          </div>
+          <div v-else class="grid gap-4">
             <fieldset class="fieldset">
               <legend class="fieldset-legend">Email</legend>
-              <input type="email" value="anna.ivanova@mail.ru" class="input input-bordered w-full" />
-            </fieldset>
-            <fieldset class="fieldset">
-              <legend class="fieldset-legend">Телефон</legend>
-              <input type="tel" value="+7 916 555-12-34" class="input input-bordered w-full" />
+              <input
+                type="email"
+                :value="user?.email"
+                class="input input-bordered w-full"
+                disabled
+              />
             </fieldset>
             <fieldset class="fieldset">
               <legend class="fieldset-legend">Язык интерфейса</legend>
-              <select class="select select-bordered w-full">
-                <option selected>Русский</option>
-                <option>English</option>
+              <select v-model="profileForm.language" class="select select-bordered w-full">
+                <option
+                  v-for="opt in languageOptions"
+                  :key="opt.value"
+                  :value="opt.value"
+                >
+                  {{ opt.label }}
+                </option>
               </select>
             </fieldset>
+            <fieldset class="fieldset">
+              <legend class="fieldset-legend">Буфер после занятия</legend>
+              <select
+                v-model.number="profileForm.bufferMinutesAfterLesson"
+                class="select select-bordered w-full"
+              >
+                <option v-for="opt in bufferOptions" :key="opt" :value="opt">
+                  {{ opt === 0 ? 'Без буфера' : `${opt} мин` }}
+                </option>
+              </select>
+              <p class="text-xs text-base-content/50 mt-1">
+                Минимальный перерыв между занятиями
+              </p>
+            </fieldset>
             <div class="flex justify-end gap-2 mt-2">
-              <button class="btn btn-ghost btn-sm">Отмена</button>
-              <button class="btn btn-primary btn-sm" @click="handleSaveProfile()">Сохранить</button>
+              <button class="btn btn-ghost btn-sm" @click="loadProfile">Отмена</button>
+              <button
+                class="btn btn-primary btn-sm"
+                :disabled="savingProfile"
+                @click="handleSaveProfile"
+              >
+                <span v-if="savingProfile" class="loading loading-spinner loading-sm" />
+                Сохранить
+              </button>
             </div>
           </div>
         </div>
@@ -99,23 +202,26 @@ function removeInterval(dayIndex: number, intervalIndex: number) {
         <div class="card bg-base-100 shadow-sm">
           <div class="card-body p-4 lg:p-6">
             <h3 class="font-semibold mb-4">Рабочий график</h3>
-            <div class="space-y-4">
+            <div v-if="loadingSchedule" class="flex justify-center py-8">
+              <span class="loading loading-spinner loading-md" />
+            </div>
+            <div v-else class="space-y-4">
               <div
                 v-for="(day, dayIndex) in schedule"
-                :key="day.day"
+                :key="day.dayOfWeek"
                 class="border border-base-300 rounded-lg p-3"
               >
                 <div class="flex items-center justify-between mb-2">
                   <label class="flex items-center gap-2 cursor-pointer">
                     <input
-                      v-model="day.enabled"
+                      v-model="day.isWorkday"
                       type="checkbox"
                       class="toggle toggle-sm toggle-primary"
                     />
-                    <span class="font-medium text-sm">{{ day.day }}</span>
+                    <span class="font-medium text-sm">{{ day.dayName }}</span>
                   </label>
                   <button
-                    v-if="day.enabled"
+                    v-if="day.isWorkday"
                     class="btn btn-ghost btn-xs"
                     @click="addInterval(dayIndex)"
                   >
@@ -123,17 +229,17 @@ function removeInterval(dayIndex: number, intervalIndex: number) {
                   </button>
                 </div>
 
-                <div v-if="day.enabled && day.intervals.length > 0" class="space-y-2 mt-2">
+                <div v-if="day.isWorkday && day.intervals.length > 0" class="space-y-2 mt-2">
                   <div
                     v-for="(interval, intervalIndex) in day.intervals"
                     :key="intervalIndex"
                     class="flex items-center gap-2"
                   >
-                    <select v-model="interval.from" class="select select-bordered select-sm flex-1">
+                    <select v-model="interval.startTime" class="select select-bordered select-sm flex-1">
                       <option v-for="t in times" :key="t" :value="t">{{ t }}</option>
                     </select>
                     <span class="text-base-content/40 text-sm">—</span>
-                    <select v-model="interval.to" class="select select-bordered select-sm flex-1">
+                    <select v-model="interval.endTime" class="select select-bordered select-sm flex-1">
                       <option v-for="t in times" :key="t" :value="t">{{ t }}</option>
                     </select>
                     <button
@@ -148,10 +254,10 @@ function removeInterval(dayIndex: number, intervalIndex: number) {
                   </div>
                 </div>
 
-                <p v-if="day.enabled && day.intervals.length === 0" class="text-xs text-base-content/40 mt-2">
+                <p v-if="day.isWorkday && day.intervals.length === 0" class="text-xs text-base-content/40 mt-2">
                   Добавьте рабочие интервалы
                 </p>
-                <p v-if="!day.enabled" class="text-xs text-base-content/40 mt-1">
+                <p v-if="!day.isWorkday" class="text-xs text-base-content/40 mt-1">
                   Выходной
                 </p>
               </div>
@@ -159,24 +265,16 @@ function removeInterval(dayIndex: number, intervalIndex: number) {
           </div>
         </div>
 
-        <!-- Buffer -->
-        <div class="card bg-base-100 shadow-sm">
-          <div class="card-body p-4 lg:p-6">
-            <h3 class="font-semibold mb-2">Буфер после занятия</h3>
-            <p class="text-xs text-base-content/50 mb-3">
-              Минимальный перерыв между занятиями. Влияет на доступные слоты в календаре.
-            </p>
-            <select v-model="bufferMinutes" class="select select-bordered w-full sm:w-48">
-              <option v-for="opt in bufferOptions" :key="opt" :value="opt">
-                {{ opt === 0 ? 'Без буфера' : `${opt} мин` }}
-              </option>
-            </select>
-          </div>
-        </div>
-
         <div class="flex justify-end gap-2">
-          <button class="btn btn-ghost btn-sm">Отмена</button>
-          <button class="btn btn-primary btn-sm" @click="handleSaveSchedule()">Сохранить график</button>
+          <button class="btn btn-ghost btn-sm" @click="loadSchedule">Отмена</button>
+          <button
+            class="btn btn-primary btn-sm"
+            :disabled="savingSchedule"
+            @click="handleSaveSchedule"
+          >
+            <span v-if="savingSchedule" class="loading loading-spinner loading-sm" />
+            Сохранить график
+          </button>
         </div>
       </div>
     </div>
