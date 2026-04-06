@@ -1,9 +1,16 @@
 node_modules
 dist
 .nuxt
-.output
+output
 .env
 .env.*
 coverage
 .DS_Store
 .playwright-cli
+.claude
+.codex
+.idea
+docs
+AGENTS.md
+frontend/.output
+frontend/.nuxt
