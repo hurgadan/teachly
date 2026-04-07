@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import { Language } from '@hurgadan/teachly-contracts'
-import type { WorkSchedule, UpdateWorkScheduleItem } from '@hurgadan/teachly-contracts'
+import { Language } from '@contracts/users'
+import type {
+  TeacherProfile,
+  UpdateProfile,
+  UpdateWorkSchedule,
+  UpdateWorkScheduleItem,
+} from '@contracts/users'
 
-const { api } = useApi()
+const { getMyProfile, getMyWorkSchedule, updateMyProfile, updateMyWorkSchedule } = useUsersApi()
 const { user, fetchUser } = useAuth()
 const { show: showToast } = useToast()
 
@@ -55,10 +60,11 @@ onMounted(async () => {
 async function loadProfile() {
   loadingProfile.value = true
   try {
-    await fetchUser()
-    if (user.value) {
-      profileForm.language = user.value.language
-      profileForm.bufferMinutesAfterLesson = user.value.bufferMinutesAfterLesson
+    const profile: TeacherProfile = await getMyProfile()
+    user.value = profile
+    if (profile) {
+      profileForm.language = profile.language
+      profileForm.bufferMinutesAfterLesson = profile.bufferMinutesAfterLesson
     }
   } finally {
     loadingProfile.value = false
@@ -68,7 +74,7 @@ async function loadProfile() {
 async function loadSchedule() {
   loadingSchedule.value = true
   try {
-    const data = await api<WorkSchedule[]>('/users/me/work-schedule')
+    const data = await getMyWorkSchedule()
     schedule.value = WEEK_DAYS.map((dayName, i) => {
       const existing = data.find(d => d.dayOfWeek === i)
       return {
@@ -88,13 +94,11 @@ async function loadSchedule() {
 async function handleSaveProfile() {
   savingProfile.value = true
   try {
-    await api('/users/me', {
-      method: 'PUT',
-      body: {
-        language: profileForm.language,
-        bufferMinutesAfterLesson: profileForm.bufferMinutesAfterLesson,
-      },
-    })
+    const payload: UpdateProfile = {
+      language: profileForm.language,
+      bufferMinutesAfterLesson: profileForm.bufferMinutesAfterLesson,
+    }
+    await updateMyProfile(payload)
     await fetchUser()
     showToast('Профиль сохранён')
   } catch {
@@ -113,10 +117,8 @@ async function handleSaveSchedule() {
       intervals: day.isWorkday ? day.intervals : [],
     }))
 
-    await api('/users/me/work-schedule', {
-      method: 'PUT',
-      body: { schedules },
-    })
+    const payload: UpdateWorkSchedule = { schedules }
+    await updateMyWorkSchedule(payload)
     showToast('Рабочий график сохранён')
   } catch {
     showToast('Ошибка при сохранении графика')

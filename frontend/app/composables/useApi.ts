@@ -1,8 +1,6 @@
-const API_BASE = '/api'
-
 interface ApiOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
-  body?: unknown
+  body?: BodyInit | Record<string, any> | null
 }
 
 export function useApi() {
@@ -14,6 +12,8 @@ export function useApi() {
   async function api<T>(path: string, options: ApiOptions = {}): Promise<T> {
     const { method = 'GET', body } = options
     const token = getToken()
+    const config = useRuntimeConfig()
+    const apiBase = config.public.apiBase
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -23,10 +23,10 @@ export function useApi() {
       headers['Authorization'] = `Bearer ${token}`
     }
 
-    return $fetch<T>(`${API_BASE}${path}`, {
+    return $fetch<T>(`${apiBase}${path}`, {
       method,
       headers,
-      body: body ? JSON.stringify(body) : undefined,
+      body,
     })
   }
 

@@ -1,10 +1,13 @@
 <script setup lang="ts">
-const props = defineProps<{ open: boolean }>()
-const emit = defineEmits<{ close: []; created: [id: number] }>()
+import type { CreateStudentPayload } from '~/types/students'
 
+const props = defineProps<{ open: boolean }>()
+const emit = defineEmits<{ close: []; created: [id: string] }>()
+
+const { createStudent } = useStudentsApi()
 const { show } = useToast()
 
-const form = reactive({
+const INITIAL_FORM: CreateStudentPayload = {
   firstName: '',
   lastName: '',
   phone: '',
@@ -13,20 +16,37 @@ const form = reactive({
   price: 2000,
   duration: 60,
   comment: '',
-})
+  startDate: null,
+}
+
+const form = reactive<CreateStudentPayload>({ ...INITIAL_FORM })
 
 // 30–90 мин, шаг 15
 const durationOptions = Array.from({ length: 5 }, (_, i) => 30 + i * 15)
 const loading = ref(false)
 
 async function handleSubmit() {
-  loading.value = true
-  await new Promise(r => setTimeout(r, 600))
-  loading.value = false
-  show(`Ученик ${form.firstName} ${form.lastName} создан`)
-  emit('created', 9)
-  emit('close')
-  Object.assign(form, { firstName: '', lastName: '', phone: '', email: '', telegram: '', price: 2000, duration: 60, comment: '' })
+  try {
+    loading.value = true
+    const student = await createStudent({
+      ...form,
+      lastName: form.lastName || null,
+      phone: form.phone || null,
+      email: form.email || null,
+      telegram: form.telegram || null,
+      comment: form.comment || null,
+      startDate: form.startDate || null,
+    })
+
+    show(`Ученик ${student.firstName} создан`)
+    emit('created', student.id)
+    emit('close')
+    Object.assign(form, INITIAL_FORM)
+  } catch {
+    show('Ошибка при создании ученика')
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 

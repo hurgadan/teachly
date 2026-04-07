@@ -1,34 +1,61 @@
 <script setup lang="ts">
-const props = defineProps<{ open: boolean }>()
-const emit = defineEmits<{ close: []; created: [id: number] }>()
+import type { CreateGroupPayload } from '~/types/groups'
+import type { Student } from '~/types/students'
 
-const { students } = useMockData()
+const props = defineProps<{ open: boolean }>()
+const emit = defineEmits<{ close: []; created: [id: string] }>()
+
+const { createGroup } = useGroupsApi()
+const { listStudents } = useStudentsApi()
 const { show } = useToast()
 
-const form = reactive({
+const students = ref<Student[]>([])
+const form = reactive<CreateGroupPayload>({
   name: '',
   duration: 60,
-  selectedStudents: [] as number[],
+  studentIds: [],
 })
 
 const durationOptions = Array.from({ length: 5 }, (_, i) => 30 + i * 15)
-const activeStudents = students.filter(s => s.status === 'active')
 const loading = ref(false)
+const loadingStudents = ref(false)
 
-function toggleStudent(id: number) {
-  const idx = form.selectedStudents.indexOf(id)
-  if (idx === -1) form.selectedStudents.push(id)
-  else form.selectedStudents.splice(idx, 1)
+const activeStudents = computed(() => students.value.filter(s => s.status === 'active'))
+
+watch(() => props.open, async (isOpen) => {
+  if (!isOpen) return
+
+  loadingStudents.value = true
+  try {
+    students.value = await listStudents()
+  } finally {
+    loadingStudents.value = false
+  }
+})
+
+function toggleStudent(id: string) {
+  const idx = form.studentIds.indexOf(id)
+  if (idx === -1) form.studentIds.push(id)
+  else form.studentIds.splice(idx, 1)
+}
+
+function getStudentInitials(firstName: string, lastName: string | null) {
+  return `${firstName?.[0] || ''}${lastName?.[0] || ''}` || '—'
 }
 
 async function handleSubmit() {
-  loading.value = true
-  await new Promise(r => setTimeout(r, 600))
-  loading.value = false
-  show(`Группа «${form.name}» создана`)
-  emit('created', 4)
-  emit('close')
-  Object.assign(form, { name: '', duration: 60, selectedStudents: [] })
+  try {
+    loading.value = true
+    const group = await createGroup(form)
+    show(`Группа «${group.name}» создана`)
+    emit('created', group.id)
+    emit('close')
+    Object.assign(form, { name: '', duration: 60, studentIds: [] })
+  } catch {
+    show('Ошибка при создании группы')
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
@@ -50,7 +77,10 @@ async function handleSubmit() {
 
         <div>
           <p class="text-sm font-medium mb-2">Участники</p>
-          <div class="border border-base-300 rounded-lg max-h-48 overflow-y-auto">
+          <div v-if="loadingStudents" class="flex justify-center py-6">
+            <span class="loading loading-spinner loading-md" />
+          </div>
+          <div v-else class="border border-base-300 rounded-lg max-h-48 overflow-y-auto">
             <label
               v-for="student in activeStudents"
               :key="student.id"
@@ -59,18 +89,18 @@ async function handleSubmit() {
               <input
                 type="checkbox"
                 class="checkbox checkbox-sm checkbox-primary"
-                :checked="form.selectedStudents.includes(student.id)"
+                :checked="form.studentIds.includes(student.id)"
                 @change="toggleStudent(student.id)"
               />
               <div class="avatar placeholder">
                 <div class="bg-neutral text-neutral-content w-7 rounded-full">
-                  <span class="text-[10px]">{{ student.firstName[0] }}{{ student.lastName[0] }}</span>
+                  <span class="text-[10px]">{{ getStudentInitials(student.firstName, student.lastName) }}</span>
                 </div>
               </div>
-              <span class="text-sm">{{ student.firstName }} {{ student.lastName }}</span>
+              <span class="text-sm">{{ student.firstName }} {{ student.lastName || '' }}</span>
             </label>
           </div>
-          <p class="text-xs text-base-content/50 mt-1">Выбрано: {{ form.selectedStudents.length }}</p>
+          <p class="text-xs text-base-content/50 mt-1">Выбрано: {{ form.studentIds.length }}</p>
         </div>
 
         <div class="modal-action">

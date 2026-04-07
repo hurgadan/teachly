@@ -1,0 +1,7 @@
+export const STUDENT_NAME_MAX_LENGTH = 120;
+export const STUDENT_CONTACT_MAX_LENGTH = 255;
+export const STUDENT_PRICE_MIN = 0;
+export const STUDENT_PRICE_MAX = 1_000_000;
+export const STUDENT_DURATION_MIN = 30;
+export const STUDENT_DURATION_MAX = 180;
+export const STUDENT_DURATION_STEP = 15;
