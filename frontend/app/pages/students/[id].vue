@@ -270,6 +270,8 @@ onMounted(async () => {
     <ModalsScheduleModal
       :open="showScheduleModal"
       :entity-name="`${student.firstName} ${student.lastName}`"
+      :entity-id="student.id"
+      entity-type="student"
       :default-duration="form.duration"
       @close="showScheduleModal = false"
       @saved="showScheduleModal = false"
