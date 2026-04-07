@@ -1,5 +1,3 @@
-import { fileURLToPath } from 'node:url'
-
 import tailwindcss from '@tailwindcss/vite'
 
 const apiBase = process.env.NUXT_PUBLIC_API_BASE || process.env.NUXT_API_PROXY_TARGET || 'http://localhost:3001'
@@ -10,10 +8,6 @@ export default defineNuxtConfig({
   ssr: false,
 
   css: ['~/assets/css/main.css'],
-
-  alias: {
-    '@contracts': fileURLToPath(new URL('../backend/src/_contracts', import.meta.url)),
-  },
 
   runtimeConfig: {
     public: {

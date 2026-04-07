@@ -3,4 +3,4 @@ export type {
   Group,
   GroupMember,
   UpdateGroup as UpdateGroupPayload,
-} from '@contracts/groups'
+} from '@hurgadan/teachly-contracts'

@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { Language } from '@contracts/users'
+import { Language } from '@hurgadan/teachly-contracts'
 import type {
   TeacherProfile,
   UpdateProfile,
   UpdateWorkSchedule,
   UpdateWorkScheduleItem,
-} from '@contracts/users'
+} from '@hurgadan/teachly-contracts'
 
 const { getMyProfile, getMyWorkSchedule, updateMyProfile, updateMyWorkSchedule } = useUsersApi()
 const { user, fetchUser } = useAuth()
@@ -128,11 +128,17 @@ async function handleSaveSchedule() {
 }
 
 function addInterval(dayIndex: number) {
-  schedule.value[dayIndex].intervals.push({ startTime: '09:00', endTime: '13:00' })
+  const day = schedule.value[dayIndex]
+  if (!day) return
+
+  day.intervals.push({ startTime: '09:00', endTime: '13:00' })
 }
 
 function removeInterval(dayIndex: number, intervalIndex: number) {
-  schedule.value[dayIndex].intervals.splice(intervalIndex, 1)
+  const day = schedule.value[dayIndex]
+  if (!day) return
+
+  day.intervals.splice(intervalIndex, 1)
 }
 </script>
 

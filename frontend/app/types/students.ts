@@ -3,4 +3,4 @@ export type {
   Student,
   StudentStatus,
   UpdateStudent as UpdateStudentPayload,
-} from '@contracts/students'
+} from '@hurgadan/teachly-contracts'
