@@ -7,9 +7,7 @@ import {
   TableIndex,
 } from 'typeorm';
 
-export class AddTeacherProfileAndWorkSchedules1775509304201
-  implements MigrationInterface
-{
+export class AddTeacherProfileAndWorkSchedules1775509304201 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.addColumns('users', [
       new TableColumn({

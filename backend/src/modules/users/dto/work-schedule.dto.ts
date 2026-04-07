@@ -1,9 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 
-import { WorkSchedule } from '../../../_contracts';
-
 import { WorkIntervalDto } from './work-interval.dto';
+import { WorkSchedule } from '../../../_contracts';
 
 export class WorkScheduleDto implements WorkSchedule {
   @ApiProperty()

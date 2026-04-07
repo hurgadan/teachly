@@ -9,9 +9,8 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-import { WorkInterval } from '../../../_contracts';
-
 import { UserEntity } from './user.entity';
+import { WorkInterval } from '../../../_contracts';
 
 @Entity('work_schedules')
 @Index('IDX_WORK_SCHEDULES_TEACHER_DAY', ['teacherId', 'dayOfWeek'], {

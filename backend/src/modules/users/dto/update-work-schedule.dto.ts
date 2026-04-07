@@ -11,12 +11,8 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-import {
-  UpdateWorkSchedule,
-  UpdateWorkScheduleItem,
-} from '../../../_contracts';
+import { UpdateWorkSchedule, UpdateWorkScheduleItem } from '../../../_contracts';
 import { WEEK_DAYS_COUNT } from '../constants';
-
 import { WorkIntervalDto } from './work-interval.dto';
 
 export class UpdateWorkScheduleItemDto implements UpdateWorkScheduleItem {
