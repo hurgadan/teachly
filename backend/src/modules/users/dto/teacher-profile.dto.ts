@@ -1,10 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 
+import { WorkScheduleDto } from './work-schedule.dto';
 import { TransformToDateString } from '../../../_common/utils/decorators/transform-to-date-string.decorator';
 import { Language, TeacherProfile } from '../../../_contracts';
-
-import { WorkScheduleDto } from './work-schedule.dto';
 
 export class TeacherProfileDto implements TeacherProfile {
   @ApiProperty()

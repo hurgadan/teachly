@@ -25,10 +25,7 @@ describe('users.controller.e2e.spec.ts', () => {
 
   beforeAll(async () => {
     testingModule = await Test.createTestingModule({
-      imports: [
-        ...getTestingModuleImports([UserEntity, WorkScheduleEntity]),
-        UsersModule,
-      ],
+      imports: [...getTestingModuleImports([UserEntity, WorkScheduleEntity]), UsersModule],
     }).compile();
 
     ({ app, httpServer } = await createTestingAppAndHttpServer(testingModule));

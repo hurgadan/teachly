@@ -2,12 +2,11 @@ import { faker } from '@faker-js/faker';
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { UsersService } from './users.service';
 import { Language } from '../../../_contracts';
 import { UserEntity } from '../dao/user.entity';
 import { UsersRepository } from '../repositories/users.repository';
 import { WorkScheduleRepository } from '../repositories/work-schedule.repository';
-
-import { UsersService } from './users.service';
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -144,9 +143,7 @@ describe('UsersService', () => {
     it('should throw NotFoundException when user not found', async () => {
       mockUsersRepository.findOneWithSchedules.mockResolvedValue(null);
 
-      await expect(service.getProfile(faker.string.uuid())).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.getProfile(faker.string.uuid())).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -206,16 +203,12 @@ describe('UsersService', () => {
         { id: faker.string.uuid(), dayOfWeek: 1, isWorkday: false, intervals: [] },
       ];
 
-      mockWorkScheduleRepository.findByTeacherId.mockResolvedValue(
-        mockSchedules,
-      );
+      mockWorkScheduleRepository.findByTeacherId.mockResolvedValue(mockSchedules);
 
       const result = await service.getWorkSchedule(userId);
 
       expect(result).toEqual(mockSchedules);
-      expect(
-        mockWorkScheduleRepository.findByTeacherId,
-      ).toHaveBeenCalledWith(userId);
+      expect(mockWorkScheduleRepository.findByTeacherId).toHaveBeenCalledWith(userId);
     });
   });
 
@@ -246,9 +239,7 @@ describe('UsersService', () => {
         teacherId: userId,
         ...s,
       }));
-      mockWorkScheduleRepository.findByTeacherId.mockResolvedValue(
-        savedSchedules,
-      );
+      mockWorkScheduleRepository.findByTeacherId.mockResolvedValue(savedSchedules);
 
       const result = await service.updateWorkSchedule(userId, input);
 

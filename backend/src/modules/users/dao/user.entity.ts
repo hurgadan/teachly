@@ -8,9 +8,8 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-import { Language } from '../../../_contracts';
-
 import { WorkScheduleEntity } from './work-schedule.entity';
+import { Language } from '../../../_contracts';
 
 @Entity('users')
 @Index('IDX_USERS_EMAIL', ['email'], { unique: true })

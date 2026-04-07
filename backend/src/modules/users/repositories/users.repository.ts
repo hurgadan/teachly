@@ -20,9 +20,7 @@ export class UsersRepository {
     return this.usersRepository.findOne({ where: this.toWhere(filter) });
   }
 
-  public async findOneWithSchedules(
-    filter: UserFilter,
-  ): Promise<UserEntity | null> {
+  public async findOneWithSchedules(filter: UserFilter): Promise<UserEntity | null> {
     return this.usersRepository.findOne({
       where: this.toWhere(filter),
       relations: ['workSchedules'],
@@ -33,10 +31,7 @@ export class UsersRepository {
     return this.usersRepository.save(data);
   }
 
-  public async update(
-    id: string,
-    data: Partial<UserEntity>,
-  ): Promise<void> {
+  public async update(id: string, data: Partial<UserEntity>): Promise<void> {
     await this.usersRepository.update(id, data);
   }
 

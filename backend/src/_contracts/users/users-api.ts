@@ -1,5 +1,4 @@
 import { ApiBase } from '../api-base';
-
 import { CreateUser } from './create-user.type';
 import { User } from './user.type';
 

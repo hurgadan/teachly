@@ -4,8 +4,8 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  Put,
   Post,
+  Put,
   Request,
   UseGuards,
 } from '@nestjs/common';
@@ -40,9 +40,7 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get current teacher profile' })
   @ApiOkResponse({ type: TeacherProfileDto })
-  public async getProfile(
-    @Request() req: RequestExtended,
-  ): Promise<TeacherProfileDto> {
+  public async getProfile(@Request() req: RequestExtended): Promise<TeacherProfileDto> {
     const user = await this.usersService.getProfile(req.user!.id);
     return transformToDto(TeacherProfileDto, user);
   }
@@ -63,9 +61,7 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get work schedule' })
   @ApiOkResponse({ type: [WorkScheduleDto] })
-  public async getWorkSchedule(
-    @Request() req: RequestExtended,
-  ): Promise<WorkScheduleDto[]> {
+  public async getWorkSchedule(@Request() req: RequestExtended): Promise<WorkScheduleDto[]> {
     const schedules = await this.usersService.getWorkSchedule(req.user!.id);
     return schedules.map((s) => transformToDto(WorkScheduleDto, s));
   }
@@ -78,10 +74,7 @@ export class UsersController {
     @Request() req: RequestExtended,
     @Body() data: UpdateWorkScheduleDto,
   ): Promise<WorkScheduleDto[]> {
-    const schedules = await this.usersService.updateWorkSchedule(
-      req.user!.id,
-      data,
-    );
+    const schedules = await this.usersService.updateWorkSchedule(req.user!.id, data);
     return schedules.map((s) => transformToDto(WorkScheduleDto, s));
   }
 }
