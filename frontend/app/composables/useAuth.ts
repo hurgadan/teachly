@@ -1,6 +1,5 @@
-import { AuthApi } from '@contracts/auth'
-import type { BodyLogin, Login } from '@contracts/auth'
-import type { CreateUser, TeacherProfile } from '@contracts/users'
+import { AuthApi } from '@hurgadan/teachly-contracts'
+import type { BodyLogin, CreateUser, Login, TeacherProfile } from '@hurgadan/teachly-contracts'
 
 const TOKEN_KEY = 'auth_token'
 

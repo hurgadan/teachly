@@ -1,4 +1,4 @@
-import { GroupsApi } from '@contracts/groups'
+import { GroupsApi } from '@hurgadan/teachly-contracts'
 
 import type { CreateGroupPayload, Group, UpdateGroupPayload } from '~/types/groups'
 

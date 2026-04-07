@@ -1,4 +1,4 @@
-import { StudentsApi } from '@contracts/students'
+import { StudentsApi } from '@hurgadan/teachly-contracts'
 
 import type { CreateStudentPayload, Student, UpdateStudentPayload } from '~/types/students'
 

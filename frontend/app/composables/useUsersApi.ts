@@ -1,4 +1,4 @@
-import { UsersApi } from '@contracts/users'
+import { UsersApi } from '@hurgadan/teachly-contracts'
 
 import type {
   CreateUser,
@@ -6,7 +6,7 @@ import type {
   UpdateProfile,
   UpdateWorkSchedule,
   WorkSchedule,
-} from '@contracts/users'
+} from '@hurgadan/teachly-contracts'
 
 type ApiRequest = ReturnType<typeof useApi>['api']
 
