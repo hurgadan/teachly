@@ -1,15 +1,13 @@
 <script setup lang="ts">
-const { students, formatPrice } = useMockData()
+import type { Student } from '~/types/students'
+
+const { listStudents } = useStudentsApi()
+
+const students = ref<Student[]>([])
+const loading = ref(true)
 
 const search = ref('')
-const filtered = computed(() => {
-  if (!search.value) return students
-  const q = search.value.toLowerCase()
-  return students.filter(s =>
-    `${s.firstName} ${s.lastName}`.toLowerCase().includes(q) ||
-    s.email.toLowerCase().includes(q),
-  )
-})
+const searchDebounce = ref<ReturnType<typeof setTimeout> | null>(null)
 
 const statusLabel: Record<string, string> = {
   active: 'Активный',
@@ -17,8 +15,45 @@ const statusLabel: Record<string, string> = {
   archived: 'Архив',
 }
 const showCreateModal = ref(false)
+const { show } = useToast()
 
-function onStudentCreated(id: number) {
+function formatPrice(amount?: number | null): string {
+  if (typeof amount !== 'number' || Number.isNaN(amount)) {
+    return '—'
+  }
+
+  return amount.toLocaleString('ru-RU') + ' ₽'
+}
+
+function getStudentInitials(student: Student): string {
+  const first = student.firstName?.[0] || ''
+  const last = student.lastName?.[0] || ''
+  return `${first}${last}` || '—'
+}
+
+async function loadStudents(query = '') {
+  try {
+    loading.value = true
+    students.value = await listStudents(query)
+  } catch {
+    show('Ошибка при загрузке учеников')
+  } finally {
+    loading.value = false
+  }
+}
+
+watch(search, (value) => {
+  if (searchDebounce.value) clearTimeout(searchDebounce.value)
+  searchDebounce.value = setTimeout(() => {
+    void loadStudents(value)
+  }, 250)
+})
+
+onMounted(async () => {
+  await loadStudents()
+})
+
+function onStudentCreated(id: string) {
   navigateTo(`/students/${id}`)
 }
 
@@ -31,7 +66,7 @@ const statusClass: Record<string, string> = {
 
 <template>
   <div>
-    <UiPageHeader title="Ученики" :subtitle="`Всего: ${students.length}`">
+    <UiPageHeader title="Ученики" :subtitle="loading ? 'Загрузка...' : `Всего: ${students.length}`">
       <template #actions>
         <button class="btn btn-primary btn-sm" @click="showCreateModal = true">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
@@ -62,13 +97,12 @@ const statusClass: Record<string, string> = {
               <th>Статус</th>
               <th>Цена</th>
               <th>Длительность</th>
-              <th>Задолженность</th>
               <th />
             </tr>
           </thead>
           <tbody>
             <tr
-              v-for="student in filtered"
+              v-for="student in students"
               :key="student.id"
               class="hover:bg-base-200/50 cursor-pointer"
               @click="navigateTo(`/students/${student.id}`)"
@@ -77,11 +111,11 @@ const statusClass: Record<string, string> = {
                 <div class="flex items-center gap-3">
                   <div class="avatar placeholder">
                     <div class="bg-neutral text-neutral-content w-8 rounded-full">
-                      <span class="text-xs">{{ student.firstName[0] }}{{ student.lastName[0] }}</span>
+                      <span class="text-xs">{{ getStudentInitials(student) }}</span>
                     </div>
                   </div>
                   <div>
-                    <p class="font-medium">{{ student.firstName }} {{ student.lastName }}</p>
+                    <p class="font-medium">{{ student.firstName || 'Без имени' }} {{ student.lastName || '' }}</p>
                     <p class="text-xs text-base-content/50">{{ student.email }}</p>
                   </div>
                 </div>
@@ -92,11 +126,7 @@ const statusClass: Record<string, string> = {
                 </span>
               </td>
               <td class="font-medium">{{ formatPrice(student.price) }}</td>
-              <td>{{ student.duration }} мин</td>
-              <td>
-                <span v-if="student.debt > 0" class="font-medium text-error">{{ formatPrice(student.debt) }}</span>
-                <span v-else class="text-base-content/40">—</span>
-              </td>
+              <td>{{ typeof student.duration === 'number' ? `${student.duration} мин` : '—' }}</td>
               <td>
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 text-base-content/30">
                   <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
@@ -111,7 +141,7 @@ const statusClass: Record<string, string> = {
     <!-- Mobile cards -->
     <div class="lg:hidden space-y-2">
       <NuxtLink
-        v-for="student in filtered"
+        v-for="student in students"
         :key="student.id"
         :to="`/students/${student.id}`"
         class="card bg-base-100 shadow-sm"
@@ -121,11 +151,11 @@ const statusClass: Record<string, string> = {
             <div class="flex items-center gap-3">
               <div class="avatar placeholder">
                 <div class="bg-neutral text-neutral-content w-10 rounded-full">
-                  <span class="text-sm">{{ student.firstName[0] }}{{ student.lastName[0] }}</span>
+                  <span class="text-sm">{{ getStudentInitials(student) }}</span>
                 </div>
               </div>
               <div>
-                <p class="font-medium">{{ student.firstName }} {{ student.lastName }}</p>
+                <p class="font-medium">{{ student.firstName || 'Без имени' }} {{ student.lastName || '' }}</p>
                 <span :class="['badge badge-xs', statusClass[student.status]]">
                   {{ statusLabel[student.status] }}
                 </span>
@@ -137,13 +167,14 @@ const statusClass: Record<string, string> = {
           </div>
           <div class="flex items-center gap-4 mt-2 text-sm text-base-content/70">
             <span>{{ formatPrice(student.price) }}</span>
-            <span>{{ student.duration }} мин</span>
-            <span v-if="student.debt > 0" class="text-error font-medium ml-auto">
-              Долг: {{ formatPrice(student.debt) }}
-            </span>
+            <span>{{ typeof student.duration === 'number' ? `${student.duration} мин` : '—' }}</span>
           </div>
         </div>
       </NuxtLink>
+    </div>
+
+    <div v-if="!loading && students.length === 0" class="text-sm text-base-content/50 py-8 text-center">
+      Ученики не найдены
     </div>
 
     <ModalsCreateStudentModal :open="showCreateModal" @close="showCreateModal = false" @created="onStudentCreated" />

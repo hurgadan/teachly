@@ -1,19 +1,17 @@
 <script setup lang="ts">
-const route = useRoute()
-const { getStudent, getStudentLessons, getStudentPayments, formatPrice, formatDate } = useMockData()
+import type { Student, StudentStatus } from '~/types/students'
 
-const studentId = Number(route.params.id)
-const student = getStudent(studentId)
-const lessons = getStudentLessons(studentId)
-const studentPayments = getStudentPayments(studentId)
+const route = useRoute()
+const { getStudent, updateStudent } = useStudentsApi()
+const { show: showToast } = useToast()
+
+const studentId = computed(() => String(route.params.id))
+const student = ref<Student | null>(null)
+const loading = ref(true)
+const saving = ref(false)
 
 const activeTab = ref('profile')
 
-const statusLabel: Record<string, string> = {
-  active: 'Активный',
-  paused: 'Пауза',
-  archived: 'Архив',
-}
 const statusOptions = [
   { value: 'active', label: 'Активный' },
   { value: 'paused', label: 'Пауза' },
@@ -23,26 +21,82 @@ const durationOptions = Array.from({ length: 5 }, (_, i) => 30 + i * 15)
 
 const showScheduleModal = ref(false)
 const showPaymentModal = ref(false)
-const { show: showToast } = useToast()
 
-function handleSaveProfile() {
-  showToast('Профиль сохранён')
+const form = reactive({
+  firstName: '',
+  lastName: '',
+  phone: '',
+  email: '',
+  telegram: '',
+  status: 'active' as StudentStatus,
+  price: 2000,
+  duration: 60,
+  startDate: '',
+  comment: '',
+})
+
+function formatPrice(amount: number): string {
+  return amount.toLocaleString('ru-RU') + ' ₽'
 }
 
-const lessonStatusLabel: Record<string, string> = {
-  completed: 'Проведено',
-  scheduled: 'Запланировано',
-  cancelled: 'Отменено',
+async function loadStudent() {
+  try {
+    loading.value = true
+    student.value = await getStudent(studentId.value)
+
+    if (student.value) {
+      form.firstName = student.value.firstName
+      form.lastName = student.value.lastName || ''
+      form.phone = student.value.phone || ''
+      form.email = student.value.email || ''
+      form.telegram = student.value.telegram || ''
+      form.status = student.value.status
+      form.price = student.value.price
+      form.duration = student.value.duration
+      form.startDate = student.value.startDate || ''
+      form.comment = student.value.comment || ''
+    }
+  } catch {
+    student.value = null
+  } finally {
+    loading.value = false
+  }
 }
-const lessonStatusClass: Record<string, string> = {
-  completed: 'badge-success',
-  scheduled: 'badge-info',
-  cancelled: 'badge-error',
+
+async function handleSaveProfile() {
+  try {
+    saving.value = true
+    student.value = await updateStudent(studentId.value, {
+      firstName: form.firstName,
+      lastName: form.lastName || null,
+      phone: form.phone || null,
+      email: form.email || null,
+      telegram: form.telegram || null,
+      status: form.status,
+      price: form.price,
+      duration: form.duration,
+      startDate: form.startDate || null,
+      comment: form.comment || null,
+    })
+    showToast('Профиль сохранён')
+  } catch {
+    showToast('Ошибка при сохранении профиля')
+  } finally {
+    saving.value = false
+  }
 }
+
+onMounted(async () => {
+  await loadStudent()
+})
 </script>
 
 <template>
-  <div v-if="student">
+  <div v-if="loading" class="flex justify-center py-12">
+    <span class="loading loading-spinner loading-lg" />
+  </div>
+
+  <div v-else-if="student">
     <!-- Back link -->
     <NuxtLink to="/students" class="btn btn-ghost btn-sm gap-1 mb-4 -ml-2">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
@@ -51,7 +105,7 @@ const lessonStatusClass: Record<string, string> = {
       Ученики
     </NuxtLink>
 
-    <UiPageHeader :title="`${student.firstName} ${student.lastName}`">
+    <UiPageHeader :title="`${student.firstName} ${student.lastName || ''}`.trim()">
       <template #actions>
         <button class="btn btn-primary btn-sm" @click="showScheduleModal = true">Сформировать расписание</button>
       </template>
@@ -92,24 +146,24 @@ const lessonStatusClass: Record<string, string> = {
             <div class="grid sm:grid-cols-2 gap-4">
               <fieldset class="fieldset">
                 <legend class="fieldset-legend">Имя</legend>
-                <input type="text" :value="student.firstName" class="input input-bordered w-full" />
+                <input v-model="form.firstName" type="text" class="input input-bordered w-full" />
               </fieldset>
               <fieldset class="fieldset">
                 <legend class="fieldset-legend">Фамилия</legend>
-                <input type="text" :value="student.lastName" class="input input-bordered w-full" />
+                <input v-model="form.lastName" type="text" class="input input-bordered w-full" />
               </fieldset>
             </div>
             <fieldset class="fieldset">
               <legend class="fieldset-legend">Телефон</legend>
-              <input type="tel" :value="student.phone" class="input input-bordered w-full" />
+              <input v-model="form.phone" type="tel" class="input input-bordered w-full" />
             </fieldset>
             <fieldset class="fieldset">
               <legend class="fieldset-legend">Email</legend>
-              <input type="email" :value="student.email" class="input input-bordered w-full" />
+              <input v-model="form.email" type="email" class="input input-bordered w-full" />
             </fieldset>
             <fieldset class="fieldset">
               <legend class="fieldset-legend">Telegram</legend>
-              <input type="text" :value="student.telegram" class="input input-bordered w-full" />
+              <input v-model="form.telegram" type="text" class="input input-bordered w-full" />
             </fieldset>
           </div>
         </div>
@@ -123,12 +177,11 @@ const lessonStatusClass: Record<string, string> = {
             <div class="grid gap-4">
               <fieldset class="fieldset">
                 <legend class="fieldset-legend">Статус</legend>
-                <select class="select select-bordered w-full">
+                <select v-model="form.status" class="select select-bordered w-full">
                   <option
                     v-for="opt in statusOptions"
                     :key="opt.value"
                     :value="opt.value"
-                    :selected="opt.value === student.status"
                   >
                     {{ opt.label }}
                   </option>
@@ -137,16 +190,15 @@ const lessonStatusClass: Record<string, string> = {
               <div class="grid sm:grid-cols-2 gap-4">
                 <fieldset class="fieldset">
                   <legend class="fieldset-legend">Цена за занятие, ₽</legend>
-                  <input type="number" :value="student.price" class="input input-bordered w-full" />
+                  <input v-model.number="form.price" type="number" class="input input-bordered w-full" />
                 </fieldset>
                 <fieldset class="fieldset">
                   <legend class="fieldset-legend">Длительность</legend>
-                  <select class="select select-bordered w-full">
+                  <select v-model.number="form.duration" class="select select-bordered w-full">
                     <option
                       v-for="d in durationOptions"
                       :key="d"
                       :value="d"
-                      :selected="d === student.duration"
                     >
                       {{ d }} мин
                     </option>
@@ -155,7 +207,7 @@ const lessonStatusClass: Record<string, string> = {
               </div>
               <fieldset class="fieldset">
                 <legend class="fieldset-legend">Дата начала занятий</legend>
-                <input type="date" :value="student.startDate" class="input input-bordered w-full" />
+                <input v-model="form.startDate" type="date" class="input input-bordered w-full" />
               </fieldset>
             </div>
           </div>
@@ -164,7 +216,7 @@ const lessonStatusClass: Record<string, string> = {
         <div class="card bg-base-100 shadow-sm">
           <div class="card-body p-4 lg:p-6">
             <h3 class="font-semibold mb-4">Комментарий</h3>
-            <textarea class="textarea textarea-bordered w-full" rows="3">{{ student.comment }}</textarea>
+            <textarea v-model="form.comment" class="textarea textarea-bordered w-full" rows="3" />
           </div>
         </div>
 
@@ -181,7 +233,10 @@ const lessonStatusClass: Record<string, string> = {
 
         <div class="flex justify-end gap-2">
           <button class="btn btn-ghost btn-sm">Отмена</button>
-          <button class="btn btn-primary btn-sm" @click="handleSaveProfile()">Сохранить</button>
+          <button class="btn btn-primary btn-sm" :disabled="saving" @click="handleSaveProfile()">
+            <span v-if="saving" class="loading loading-spinner loading-sm" />
+            Сохранить
+          </button>
         </div>
       </div>
     </div>
@@ -190,34 +245,8 @@ const lessonStatusClass: Record<string, string> = {
     <div v-if="activeTab === 'lessons'">
       <div class="card bg-base-100 shadow-sm">
         <div class="card-body p-4 lg:p-6">
-          <div v-if="lessons.length === 0" class="text-sm text-base-content/50 text-center py-8">
-            Нет занятий
-          </div>
-          <div v-else class="overflow-x-auto">
-            <table class="table table-sm">
-              <thead>
-                <tr>
-                  <th>Дата</th>
-                  <th>Время</th>
-                  <th>Длительность</th>
-                  <th>Статус</th>
-                  <th>Сумма</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="lesson in lessons" :key="lesson.id">
-                  <td>{{ lesson.date }}</td>
-                  <td>{{ lesson.time }}</td>
-                  <td>{{ lesson.duration }} мин</td>
-                  <td>
-                    <span :class="['badge badge-sm', lessonStatusClass[lesson.status]]">
-                      {{ lessonStatusLabel[lesson.status] }}
-                    </span>
-                  </td>
-                  <td class="font-medium">{{ formatPrice(lesson.price) }}</td>
-                </tr>
-              </tbody>
-            </table>
+          <div class="text-sm text-base-content/50 text-center py-8">
+            История занятий появится на этапе 8
           </div>
         </div>
       </div>
@@ -231,26 +260,8 @@ const lessonStatusClass: Record<string, string> = {
             <h3 class="font-semibold">История оплат</h3>
             <button class="btn btn-primary btn-sm" @click="showPaymentModal = true">Добавить оплату</button>
           </div>
-          <div v-if="studentPayments.length === 0" class="text-sm text-base-content/50 text-center py-8">
-            Нет оплат
-          </div>
-          <div v-else class="overflow-x-auto">
-            <table class="table table-sm">
-              <thead>
-                <tr>
-                  <th>Дата</th>
-                  <th>Сумма</th>
-                  <th>Способ</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="payment in studentPayments" :key="payment.id">
-                  <td>{{ payment.date }}</td>
-                  <td class="font-medium text-success">+{{ formatPrice(payment.amount) }}</td>
-                  <td>{{ payment.method }}</td>
-                </tr>
-              </tbody>
-            </table>
+          <div class="text-sm text-base-content/50 text-center py-8">
+            История оплат появится на этапе 8
           </div>
         </div>
       </div>
@@ -259,7 +270,7 @@ const lessonStatusClass: Record<string, string> = {
     <ModalsScheduleModal
       :open="showScheduleModal"
       :entity-name="`${student.firstName} ${student.lastName}`"
-      :default-duration="student.duration"
+      :default-duration="form.duration"
       @close="showScheduleModal = false"
       @saved="showScheduleModal = false"
     />

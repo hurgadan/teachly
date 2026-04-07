@@ -1,12 +1,45 @@
-import type { TeacherProfile } from '@hurgadan/teachly-contracts'
+import { AuthApi } from '@contracts/auth'
+import type { BodyLogin, Login } from '@contracts/auth'
+import type { CreateUser, TeacherProfile } from '@contracts/users'
 
 const TOKEN_KEY = 'auth_token'
 
 const user = ref<TeacherProfile | null>(null)
 const isAuthenticated = computed(() => !!user.value)
 
+type ApiRequest = ReturnType<typeof useApi>['api']
+
+class AuthHttpApi extends AuthApi {
+  public constructor(private readonly request: ApiRequest) {
+    super()
+  }
+
+  protected login(data: BodyLogin): Promise<Login> {
+    return this.request<Login>(`${this.baseUrl}/login`, {
+      method: 'POST',
+      body: data,
+    })
+  }
+
+  protected logout(): Promise<void> {
+    return this.request<void>(`${this.baseUrl}/logout`, {
+      method: 'POST',
+    })
+  }
+
+  public loginUser(data: BodyLogin) {
+    return this.login(data)
+  }
+
+  public logoutUser() {
+    return this.logout()
+  }
+}
+
 export function useAuth() {
   const { api } = useApi()
+  const { createUser, getMyProfile } = useUsersApi()
+  const authApi = new AuthHttpApi(api)
 
   function setToken(token: string) {
     localStorage.setItem(TOKEN_KEY, token)
@@ -22,27 +55,23 @@ export function useAuth() {
   }
 
   async function login(email: string, password: string) {
-    const result = await api<{ accessToken: string }>('/auth/login', {
-      method: 'POST',
-      body: { email, password },
-    })
+    const body: BodyLogin = { email, password }
+    const result = await authApi.loginUser(body)
 
     setToken(result.accessToken)
     await fetchUser()
   }
 
   async function register(email: string, password: string) {
-    await api('/users', {
-      method: 'POST',
-      body: { email, password },
-    })
+    const payload: CreateUser = { email, password }
+    await createUser(payload)
 
     await login(email, password)
   }
 
   async function fetchUser() {
     try {
-      user.value = await api<TeacherProfile>('/users/me')
+      user.value = await getMyProfile()
     } catch {
       user.value = null
       removeToken()

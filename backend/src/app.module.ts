@@ -5,6 +5,8 @@ import pinoLogger from './_common/app/app-modules/pino-logger';
 import typeOrm from './_common/app/app-modules/type-orm';
 import config from './config';
 import { AuthModule } from './modules/auth/auth.module';
+import { GroupsModule } from './modules/groups/groups.module';
+import { StudentsModule } from './modules/students/students.module';
 import { UsersModule } from './modules/users/users.module';
 
 @Module({
@@ -16,6 +18,8 @@ import { UsersModule } from './modules/users/users.module';
     pinoLogger,
     typeOrm,
     AuthModule,
+    StudentsModule,
+    GroupsModule,
     UsersModule,
   ],
 })

@@ -20,7 +20,7 @@ export const getTestingModuleImports = (entities?: Function[]) => {
 
         return {
           ...opts,
-          autoLoadEntities: false,
+          autoLoadEntities: true,
           entities: entities ?? undefined,
         };
       },

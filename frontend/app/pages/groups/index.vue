@@ -1,16 +1,42 @@
 <script setup lang="ts">
-const { groups } = useMockData()
+import type { Group } from '~/types/groups'
 
+const { listGroups } = useGroupsApi()
+const { show } = useToast()
+
+const groups = ref<Group[]>([])
+const loading = ref(true)
 const showCreateModal = ref(false)
 
-function onGroupCreated(id: number) {
+function getMemberInitials(firstName: string, lastName: string | null): string {
+  const first = firstName?.[0] || ''
+  const last = lastName?.[0] || ''
+  return `${first}${last}` || '—'
+}
+
+async function loadGroups() {
+  try {
+    loading.value = true
+    groups.value = await listGroups()
+  } catch {
+    show('Ошибка при загрузке групп')
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(async () => {
+  await loadGroups()
+})
+
+function onGroupCreated(id: string) {
   navigateTo(`/groups/${id}`)
 }
 </script>
 
 <template>
   <div>
-    <UiPageHeader title="Группы" :subtitle="`Всего: ${groups.length}`">
+    <UiPageHeader title="Группы" :subtitle="loading ? 'Загрузка...' : `Всего: ${groups.length}`">
       <template #actions>
         <button class="btn btn-primary btn-sm" @click="showCreateModal = true">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
@@ -30,7 +56,6 @@ function onGroupCreated(id: number) {
               <th>Название</th>
               <th>Участники</th>
               <th>Длительность</th>
-              <th>Расписание</th>
               <th />
             </tr>
           </thead>
@@ -51,7 +76,7 @@ function onGroupCreated(id: number) {
                       class="avatar placeholder"
                     >
                       <div class="bg-neutral text-neutral-content w-7 rounded-full">
-                        <span class="text-[10px]">{{ member.name.split(' ').map(n => n[0]).join('') }}</span>
+                        <span class="text-[10px]">{{ getMemberInitials(member.firstName, member.lastName) }}</span>
                       </div>
                     </div>
                   </div>
@@ -59,7 +84,6 @@ function onGroupCreated(id: number) {
                 </div>
               </td>
               <td>{{ group.duration }} мин</td>
-              <td>{{ group.schedule }}</td>
               <td>
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 text-base-content/30">
                   <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
@@ -83,7 +107,7 @@ function onGroupCreated(id: number) {
           <div class="flex items-start justify-between">
             <div>
               <p class="font-medium">{{ group.name }}</p>
-              <p class="text-sm text-base-content/60 mt-1">{{ group.schedule }}</p>
+              <p class="text-sm text-base-content/60 mt-1">{{ group.members.length }} участников</p>
             </div>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 text-base-content/30 shrink-0">
               <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
@@ -95,6 +119,10 @@ function onGroupCreated(id: number) {
           </div>
         </div>
       </NuxtLink>
+    </div>
+
+    <div v-if="!loading && groups.length === 0" class="text-sm text-base-content/50 py-8 text-center">
+      Группы не найдены
     </div>
 
     <ModalsCreateGroupModal :open="showCreateModal" @close="showCreateModal = false" @created="onGroupCreated" />
