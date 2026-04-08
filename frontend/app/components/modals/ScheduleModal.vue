@@ -1,123 +1,209 @@
 <script setup lang="ts">
+import type { AvailableSlot, RecurringLessonSlot } from '~/types/calendar'
+
 const props = defineProps<{
   open: boolean
   entityName: string
+  entityId: string
+  entityType: 'student' | 'group'
   defaultDuration: number
 }>()
 const emit = defineEmits<{ close: []; saved: [] }>()
 
-const { workSchedule, weekLessons } = useMockData()
+const { createLesson, createRecurringLesson, getAvailableSlots } = useCalendarApi()
+const { getMyWorkSchedule } = useUsersApi()
 const { show } = useToast()
 
 const loading = ref(false)
+const loadingSlots = ref(false)
+const loadingSchedule = ref(false)
+const mode = ref<'recurring' | 'one-time'>('recurring')
 
 // Duration selector: 30–90, step 15, pre-filled from entity profile
 const durationOptions = Array.from({ length: 5 }, (_, i) => 30 + i * 15)
 const duration = ref(props.defaultDuration)
 
+const weekStartDate = ref(getWeekStartDate())
+const workSchedule = ref<Array<{ dayOfWeek: number; isWorkday: boolean }>>([])
+const apiSlots = ref<AvailableSlot[]>([])
+const selectedSlots = ref<RecurringLessonSlot[]>([])
+const selectedOneTimeSlot = ref<AvailableSlot | null>(null)
+
 watch(() => props.defaultDuration, (val) => {
   duration.value = val
 })
+watch([() => props.open, duration], async ([isOpen]) => {
+  if (!isOpen) {
+    return
+  }
+
+  duration.value = props.defaultDuration
+  selectedSlots.value = []
+  selectedOneTimeSlot.value = null
+  await loadModalData()
+})
+
 watch(() => props.open, (val) => {
   if (val) {
+    mode.value = 'recurring'
     duration.value = props.defaultDuration
     selectedSlots.value = []
+    selectedOneTimeSlot.value = null
   }
 })
 
-// Selected slots
-const selectedSlots = ref<{ day: string; dayShort: string; from: string; to: string }[]>([])
+const weekDays = computed(() => buildWeekDays(weekStartDate.value))
 
-const weekDays = [
-  { key: 'Понедельник', short: 'Пн', dateStr: '2026-04-06' },
-  { key: 'Вторник', short: 'Вт', dateStr: '2026-04-07' },
-  { key: 'Среда', short: 'Ср', dateStr: '2026-04-08' },
-  { key: 'Четверг', short: 'Чт', dateStr: '2026-04-09' },
-  { key: 'Пятница', short: 'Пт', dateStr: '2026-04-10' },
-  { key: 'Суббота', short: 'Сб', dateStr: '2026-04-11' },
-]
+const activeDay = ref('0')
 
-const activeDay = ref(weekDays[0].key)
+const availableSlots = computed(() =>
+  apiSlots.value.filter((slot) => String(slot.dayOfWeek) === activeDay.value),
+)
+const selectedDay = computed(() =>
+  weekDays.value.find((day) => String(day.dayOfWeek) === activeDay.value) ?? null,
+)
 
-function formatTime(totalMinutes: number): string {
-  const h = Math.floor(totalMinutes / 60)
-  const m = totalMinutes % 60
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+function isSelected(slot: AvailableSlot) {
+  return selectedSlots.value.some(
+    (selected) =>
+      selected.dayOfWeek === slot.dayOfWeek &&
+      selected.date === slot.date &&
+      selected.startTime === slot.startTime,
+  )
 }
 
-// Compute available full-duration slots for the active day
-const availableSlots = computed(() => {
-  const daySchedule = workSchedule.find(d => d.day === activeDay.value)
-  if (!daySchedule || !daySchedule.enabled) return []
+function toggleSlot(slot: AvailableSlot) {
+  const idx = selectedSlots.value.findIndex(
+    (selected) =>
+      selected.dayOfWeek === slot.dayOfWeek &&
+      selected.date === slot.date &&
+      selected.startTime === slot.startTime,
+  )
 
-  const dayInfo = weekDays.find(d => d.key === activeDay.value)
-  const dayLessons = dayInfo ? weekLessons.filter(l => l.date === dayInfo.dateStr) : []
-  const bufferMin = 15 // buffer after each lesson
-
-  // Build list of occupied time ranges (lesson start → lesson end + buffer)
-  const occupied = dayLessons.map(l => {
-    const [lh, lm] = l.time.split(':').map(Number)
-    return { start: lh * 60 + lm, end: lh * 60 + lm + l.duration + bufferMin }
-  })
-
-  const slots: { from: string; to: string }[] = []
-  const dur = duration.value
-
-  for (const interval of daySchedule.intervals) {
-    const [startH, startM] = interval.from.split(':').map(Number)
-    const [endH, endM] = interval.to.split(':').map(Number)
-    const intervalStart = startH * 60 + startM
-    const intervalEnd = endH * 60 + endM
-
-    // Slide through the interval in 15-min steps
-    for (let t = intervalStart; t + dur <= intervalEnd; t += 15) {
-      const slotEnd = t + dur
-
-      // Check no conflict with occupied ranges
-      const conflict = occupied.some(o => t < o.end && slotEnd > o.start)
-      if (!conflict) {
-        slots.push({ from: formatTime(t), to: formatTime(slotEnd) })
-      }
-    }
-  }
-
-  return slots
-})
-
-function isSelected(from: string, to: string) {
-  return selectedSlots.value.some(s => s.day === activeDay.value && s.from === from && s.to === to)
-}
-
-function toggleSlot(from: string, to: string) {
-  const idx = selectedSlots.value.findIndex(s => s.day === activeDay.value && s.from === from && s.to === to)
   if (idx !== -1) {
     selectedSlots.value.splice(idx, 1)
   } else {
-    const dayInfo = weekDays.find(d => d.key === activeDay.value)
     selectedSlots.value.push({
-      day: activeDay.value,
-      dayShort: dayInfo?.short || '',
-      from,
-      to,
+      date: slot.date,
+      dayOfWeek: slot.dayOfWeek,
+      startTime: slot.startTime,
     })
   }
+}
+
+function isOneTimeSelected(slot: AvailableSlot) {
+  return (
+    selectedOneTimeSlot.value?.date === slot.date &&
+    selectedOneTimeSlot.value?.dayOfWeek === slot.dayOfWeek &&
+    selectedOneTimeSlot.value?.startTime === slot.startTime
+  )
+}
+
+function selectOneTimeSlot(slot: AvailableSlot) {
+  selectedOneTimeSlot.value = isOneTimeSelected(slot) ? null : slot
 }
 
 function removeSlot(index: number) {
   selectedSlots.value.splice(index, 1)
 }
 
-function selectedCountForDay(dayKey: string) {
-  return selectedSlots.value.filter(s => s.day === dayKey).length
+function selectedCountForDay(dayOfWeek: number) {
+  return selectedSlots.value.filter((slot) => slot.dayOfWeek === dayOfWeek).length
 }
 
 async function handleSave() {
-  loading.value = true
-  await new Promise(r => setTimeout(r, 800))
-  loading.value = false
-  show(`Расписание для «${props.entityName}» сохранено (${selectedSlots.value.length} занятий в неделю)`)
-  emit('saved')
-  emit('close')
+  try {
+    loading.value = true
+
+    if (mode.value === 'one-time') {
+      if (!selectedOneTimeSlot.value) {
+        return
+      }
+
+      await createLesson({
+        duration: duration.value,
+        date: selectedOneTimeSlot.value.date,
+        startTime: selectedOneTimeSlot.value.startTime,
+        ...(props.entityType === 'student' ? { studentId: props.entityId } : { groupId: props.entityId }),
+      })
+      show(`Разовое занятие для «${props.entityName}» создано`)
+    } else {
+      await createRecurringLesson({
+        duration: duration.value,
+        ...(props.entityType === 'student' ? { studentId: props.entityId } : { groupId: props.entityId }),
+        slots: selectedSlots.value,
+      })
+      show(`Расписание для «${props.entityName}» сохранено`)
+    }
+
+    emit('saved')
+    emit('close')
+  } catch {
+    show(mode.value === 'one-time' ? 'Ошибка при создании разового занятия' : 'Ошибка при сохранении расписания')
+  } finally {
+    loading.value = false
+  }
+}
+
+async function loadModalData() {
+  try {
+    loadingSchedule.value = true
+    loadingSlots.value = true
+    const [schedules, slots] = await Promise.all([
+      getMyWorkSchedule(),
+      getAvailableSlots(weekStartDate.value, duration.value),
+    ])
+    workSchedule.value = schedules
+    apiSlots.value = slots
+    activeDay.value = String(weekDays.value[0]?.dayOfWeek ?? 0)
+  } finally {
+    loadingSchedule.value = false
+    loadingSlots.value = false
+  }
+}
+
+function getDayLabel(dayOfWeek: number) {
+  return weekDays.value.find((day) => day.dayOfWeek === dayOfWeek)?.short ?? ''
+}
+
+function isDayOff(dayOfWeek: number) {
+  return workSchedule.value.some((day) => day.dayOfWeek === dayOfWeek && !day.isWorkday)
+}
+
+function getSlotEndTime(startTime: string) {
+  return minutesToTime(timeToMinutes(startTime) + duration.value)
+}
+
+function getWeekStartDate() {
+  const current = new Date()
+  const mondayOffset = current.getDay() === 0 ? -6 : 1 - current.getDay()
+  current.setDate(current.getDate() + mondayOffset)
+  return current.toISOString().slice(0, 10)
+}
+
+function buildWeekDays(startDate: string) {
+  const labels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(`${startDate}T00:00:00`)
+    date.setDate(date.getDate() + index)
+    return {
+      short: labels[index],
+      dateStr: date.toISOString().slice(0, 10),
+      dateLabel: date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
+      dayOfWeek: index,
+    }
+  })
+}
+
+function timeToMinutes(value: string) {
+  const [hours, minutes] = value.split(':').map(Number)
+  return hours * 60 + minutes
+}
+
+function minutesToTime(value: number) {
+  const hours = Math.floor(value / 60)
+  const minutes = value % 60
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
 }
 </script>
 
@@ -143,32 +229,51 @@ async function handleSave() {
         </div>
       </div>
 
+      <div role="tablist" class="tabs tabs-box mb-5">
+        <button
+          type="button"
+          role="tab"
+          :class="['tab', { 'tab-active': mode === 'recurring' }]"
+          @click="mode = 'recurring'"
+        >
+          Регулярно
+        </button>
+        <button
+          type="button"
+          role="tab"
+          :class="['tab', { 'tab-active': mode === 'one-time' }]"
+          @click="mode = 'one-time'"
+        >
+          Разово
+        </button>
+      </div>
+
       <!-- Day tabs -->
       <div role="tablist" class="tabs tabs-bordered mb-4">
         <button
           v-for="day in weekDays"
-          :key="day.key"
+          :key="day.dayOfWeek"
           type="button"
           role="tab"
-          :class="['tab', { 'tab-active': activeDay === day.key }]"
-          @click="activeDay = day.key"
+          :class="['tab', { 'tab-active': activeDay === String(day.dayOfWeek) }]"
+          @click="activeDay = String(day.dayOfWeek)"
         >
           {{ day.short }}
           <span
-            v-if="selectedCountForDay(day.key)"
+            v-if="selectedCountForDay(day.dayOfWeek)"
             class="badge badge-xs badge-primary ml-1"
           >
-            {{ selectedCountForDay(day.key) }}
+            {{ selectedCountForDay(day.dayOfWeek) }}
           </span>
         </button>
       </div>
 
       <!-- Available slots -->
       <div class="min-h-[180px]">
-        <div
-          v-if="workSchedule.find(d => d.day === activeDay)?.enabled === false"
-          class="text-center text-base-content/40 py-12"
-        >
+        <div v-if="loadingSlots || loadingSchedule" class="flex justify-center py-12">
+          <span class="loading loading-spinner loading-md" />
+        </div>
+        <div v-else-if="isDayOff(Number(activeDay))" class="text-center text-base-content/40 py-12">
           Выходной день
         </div>
         <div v-else-if="availableSlots.length === 0" class="text-center text-base-content/40 py-12">
@@ -177,21 +282,23 @@ async function handleSave() {
         <div v-else class="grid grid-cols-2 sm:grid-cols-3 gap-2">
           <button
             v-for="slot in availableSlots"
-            :key="slot.from"
+            :key="`${slot.date}-${slot.startTime}`"
             type="button"
             :class="[
               'btn',
-              isSelected(slot.from, slot.to) ? 'btn-primary' : 'btn-outline',
+              mode === 'one-time'
+                ? (isOneTimeSelected(slot) ? 'btn-primary' : 'btn-outline')
+                : (isSelected(slot) ? 'btn-primary' : 'btn-outline'),
             ]"
-            @click="toggleSlot(slot.from, slot.to)"
+            @click="mode === 'one-time' ? selectOneTimeSlot(slot) : toggleSlot(slot)"
           >
-            {{ slot.from }} – {{ slot.to }}
+            {{ slot.startTime }} – {{ getSlotEndTime(slot.startTime) }}
           </button>
         </div>
       </div>
 
       <!-- Selected summary -->
-      <div v-if="selectedSlots.length > 0" class="mt-5 p-3 bg-base-200 rounded-lg">
+      <div v-if="mode === 'recurring' && selectedSlots.length > 0" class="mt-5 p-3 bg-base-200 rounded-lg">
         <p class="text-sm font-medium mb-2">
           Выбрано {{ selectedSlots.length }}
           {{ selectedSlots.length === 1 ? 'занятие' : selectedSlots.length < 5 ? 'занятия' : 'занятий' }}
@@ -203,10 +310,18 @@ async function handleSave() {
             :key="i"
             class="badge badge-primary badge-lg gap-1"
           >
-            {{ slot.dayShort }} {{ slot.from }}–{{ slot.to }}
+            {{ getDayLabel(slot.dayOfWeek) }} {{ slot.startTime }}
             <button type="button" class="text-primary-content/70 hover:text-primary-content" @click="removeSlot(i)">×</button>
           </span>
         </div>
+      </div>
+
+      <div v-if="mode === 'one-time' && selectedOneTimeSlot" class="mt-5 p-3 bg-base-200 rounded-lg">
+        <p class="text-sm font-medium mb-1">Выбран слот для разового занятия:</p>
+        <p class="text-sm text-base-content/70">
+          {{ selectedDay?.short }}, {{ selectedDay?.dateLabel }} ·
+          {{ selectedOneTimeSlot.startTime }} – {{ getSlotEndTime(selectedOneTimeSlot.startTime) }}
+        </p>
       </div>
 
       <div class="modal-action">
@@ -214,11 +329,11 @@ async function handleSave() {
         <button
           type="button"
           class="btn btn-primary"
-          :disabled="loading || selectedSlots.length === 0"
+          :disabled="loading || (mode === 'one-time' ? !selectedOneTimeSlot : selectedSlots.length === 0)"
           @click="handleSave"
         >
           <span v-if="loading" class="loading loading-spinner loading-sm" />
-          Сохранить расписание
+          {{ mode === 'one-time' ? 'Создать занятие' : 'Сохранить расписание' }}
         </button>
       </div>
     </div>

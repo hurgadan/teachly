@@ -202,6 +202,8 @@ onMounted(async () => {
       v-if="group"
       :open="showScheduleModal"
       :entity-name="form.name"
+      :entity-id="group.id"
+      entity-type="group"
       :default-duration="form.duration"
       @close="showScheduleModal = false"
       @saved="showScheduleModal = false"
