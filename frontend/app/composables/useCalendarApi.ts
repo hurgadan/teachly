@@ -1,4 +1,4 @@
-import { CalendarApi } from '@contracts/calendar'
+import { CalendarApi } from '@hurgadan/teachly-contracts'
 
 import type {
   AvailableSlot,

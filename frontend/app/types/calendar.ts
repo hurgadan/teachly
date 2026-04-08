@@ -6,4 +6,4 @@ export type {
   LessonStatus,
   LessonTargetType,
   RecurringLessonSlot,
-} from '@contracts/calendar'
+} from '@hurgadan/teachly-contracts'
