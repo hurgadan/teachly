@@ -42,11 +42,12 @@ describe('users.controller.e2e.spec.ts', () => {
   });
 
   describe('POST /users', () => {
-    let userData: { email?: string; password?: string };
+    let userData: { email?: string; password?: string; timezone?: string };
     beforeEach(() => {
       userData = {
         email: faker.internet.email(),
         password: faker.string.sample(26),
+        timezone: 'Europe/Moscow',
       };
     });
 

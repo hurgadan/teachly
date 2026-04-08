@@ -16,8 +16,8 @@ import { StudentEntity } from '../../students/dao/student.entity';
 import { UserEntity } from '../../users/dao/user.entity';
 
 @Entity('lessons')
-@Index('IDX_LESSONS_TEACHER_DATE', ['teacherId', 'date'])
-@Index('IDX_LESSONS_RECURRING_DATE', ['recurringLessonId', 'date'], { unique: true })
+@Index('IDX_LESSONS_TEACHER_START_AT', ['teacherId', 'startAt'])
+@Index('IDX_LESSONS_RECURRING_START_AT', ['recurringLessonId', 'startAt'], { unique: true })
 export class LessonEntity {
   @PrimaryGeneratedColumn('uuid')
   public id: string;
@@ -61,11 +61,8 @@ export class LessonEntity {
   @JoinColumn({ name: 'recurring_lesson_id' })
   public recurringLesson: RecurringLessonEntity | null;
 
-  @Column({ type: 'date', nullable: false })
-  public date: string;
-
-  @Column({ type: 'varchar', name: 'start_time', length: 5, nullable: false })
-  public startTime: string;
+  @Column({ type: 'timestamptz', name: 'start_at', nullable: false })
+  public startAt: Date;
 
   @Column({ type: 'int', nullable: false })
   public duration: number;

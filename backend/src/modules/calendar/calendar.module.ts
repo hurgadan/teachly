@@ -7,6 +7,7 @@ import { UsersModule } from '../users/users.module';
 import { CalendarController } from './controllers/calendar.controller';
 import { LessonEntity } from './dao/lesson.entity';
 import { RecurringLessonEntity } from './dao/recurring-lesson.entity';
+import { UserTimezoneChangedListener } from './listeners/user-timezone-changed.listener';
 import { LessonsRepository } from './repositories/lessons.repository';
 import { RecurringLessonsRepository } from './repositories/recurring-lessons.repository';
 import { CalendarService } from './services/calendar.service';
@@ -25,6 +26,7 @@ import { LessonsMaterializerService } from './services/lessons-materializer.serv
     RecurringLessonsRepository,
     CalendarService,
     LessonsMaterializerService,
+    UserTimezoneChangedListener,
   ],
   exports: [CalendarService],
 })

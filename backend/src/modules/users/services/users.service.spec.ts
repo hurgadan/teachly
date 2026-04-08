@@ -1,5 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { UsersService } from './users.service';
@@ -23,6 +24,10 @@ describe('UsersService', () => {
     upsertMany: jest.fn(),
   };
 
+  const mockEventEmitter = {
+    emitAsync: jest.fn().mockResolvedValue([]),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -34,6 +39,10 @@ describe('UsersService', () => {
         {
           provide: WorkScheduleRepository,
           useValue: mockWorkScheduleRepository,
+        },
+        {
+          provide: EventEmitter2,
+          useValue: mockEventEmitter,
         },
       ],
     }).compile();

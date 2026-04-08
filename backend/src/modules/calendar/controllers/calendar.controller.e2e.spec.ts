@@ -82,13 +82,13 @@ describe('calendar.controller.e2e.spec.ts', () => {
       ],
     });
 
+    // 10:00 Moscow (Europe/Moscow = UTC+3) → 07:00 UTC
     await lessonsRepository.save({
       teacherId: teacher.id,
       studentId: null,
       groupId: null,
       recurringLessonId: null,
-      date: '2026-04-06',
-      startTime: '10:00',
+      startAt: new Date('2026-04-06T07:00:00.000Z'),
       duration: 60,
       status: LessonStatus.SCHEDULED,
     });
@@ -107,7 +107,7 @@ describe('calendar.controller.e2e.spec.ts', () => {
     );
   });
 
-  it('should create recurring schedule from student card and show it in calendar week', async () => {
+  it('should create recurring lesson from student card and show it in calendar week', async () => {
     const teacher = await userFactory(testingModule);
     const token = jwtService.sign({ id: teacher.id, email: teacher.email });
     const student = await studentsRepository.save({
@@ -133,8 +133,7 @@ describe('calendar.controller.e2e.spec.ts', () => {
       expect.objectContaining({
         type: 'student',
         entityId: student.id,
-        date: '2026-04-06',
-        startTime: '09:00',
+        startAt: expect.stringMatching(/^2026-04-06T/),
         recurring: true,
       }),
     );
@@ -150,7 +149,7 @@ describe('calendar.controller.e2e.spec.ts', () => {
         expect.objectContaining({
           entityId: student.id,
           type: 'student',
-          date: '2026-04-06',
+          startAt: expect.stringMatching(/^2026-04-06T/),
         }),
       ]),
     );
@@ -192,8 +191,7 @@ describe('calendar.controller.e2e.spec.ts', () => {
       expect.objectContaining({
         entityId: student.id,
         type: 'student',
-        date: '2026-04-06',
-        startTime: '09:00',
+        startAt: expect.stringMatching(/^2026-04-06T/),
         recurring: false,
       }),
     );

@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
+import { localToUtc } from '../../../_common/utils/timezone';
 import { LessonStatus } from '../../../_contracts/calendar';
+import { UsersService } from '../../users/services/users.service';
 import { CALENDAR_MATERIALIZE_WEEKS_AHEAD } from '../constants';
 import { RecurringLessonEntity } from '../dao/recurring-lesson.entity';
 import { LessonsRepository } from '../repositories/lessons.repository';
@@ -14,6 +16,7 @@ export class LessonsMaterializerService {
   constructor(
     private readonly lessonsRepository: LessonsRepository,
     private readonly recurringLessonsRepository: RecurringLessonsRepository,
+    private readonly usersService: UsersService,
   ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_3AM)
@@ -44,30 +47,53 @@ export class LessonsMaterializerService {
     recurringLessons: RecurringLessonEntity[],
     weeks: { date: string; dayOfWeek: number }[],
   ): Promise<number> {
-    const allDates = weeks.map((w) => w.date);
-    const allIds = recurringLessons.map((r) => r.id);
+    const teacherIds = [...new Set(recurringLessons.map((r) => r.teacherId))];
 
-    const existingLessons = await this.lessonsRepository.findByRecurringLessonsAndDates(
+    const timezoneMap = new Map<string, string>();
+    await Promise.all(
+      teacherIds.map(async (teacherId) => {
+        const profile = await this.usersService.getProfile(teacherId);
+        timezoneMap.set(teacherId, profile.timezone);
+      }),
+    );
+
+    const candidateStartAts = recurringLessons.flatMap((recurringLesson) => {
+      const timezone = timezoneMap.get(recurringLesson.teacherId)!;
+      return weeks
+        .filter((w) => w.dayOfWeek === recurringLesson.dayOfWeek)
+        .map((day) => localToUtc(day.date, recurringLesson.startTime, timezone));
+    });
+
+    if (!candidateStartAts.length) {
+      return 0;
+    }
+
+    const allIds = recurringLessons.map((r) => r.id);
+    const existingLessons = await this.lessonsRepository.findByRecurringLessonsAndStartAts(
       allIds,
-      allDates,
+      candidateStartAts,
     );
 
     const existingKeys = new Set(
-      existingLessons.map((lesson) => `${lesson.recurringLessonId}:${lesson.date}`),
+      existingLessons.map((lesson) => `${lesson.recurringLessonId}:${lesson.startAt.getTime()}`),
     );
 
     const lessonsToCreate = recurringLessons.flatMap((recurringLesson) => {
+      const timezone = timezoneMap.get(recurringLesson.teacherId)!;
       const matchingDays = weeks.filter((w) => w.dayOfWeek === recurringLesson.dayOfWeek);
 
       return matchingDays
-        .filter((day) => !existingKeys.has(`${recurringLesson.id}:${day.date}`))
         .map((day) => ({
+          day,
+          startAt: localToUtc(day.date, recurringLesson.startTime, timezone),
+        }))
+        .filter(({ startAt }) => !existingKeys.has(`${recurringLesson.id}:${startAt.getTime()}`))
+        .map(({ startAt }) => ({
           teacherId: recurringLesson.teacherId,
           studentId: recurringLesson.studentId,
           groupId: recurringLesson.groupId,
           recurringLessonId: recurringLesson.id,
-          date: day.date,
-          startTime: recurringLesson.startTime,
+          startAt,
           duration: recurringLesson.duration,
           status: LessonStatus.SCHEDULED,
         }));

@@ -20,10 +20,13 @@ const languageOptions = [
 
 const bufferOptions = [0, 15, 30, 45, 60]
 
+const timezoneOptions = Intl.supportedValuesOf('timeZone')
+
 // Profile form
 const profileForm = reactive({
   language: Language.RU,
   bufferMinutesAfterLesson: 0,
+  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 })
 
 // Schedule form
@@ -65,6 +68,7 @@ async function loadProfile() {
     if (profile) {
       profileForm.language = profile.language
       profileForm.bufferMinutesAfterLesson = profile.bufferMinutesAfterLesson
+      profileForm.timezone = profile.timezone
     }
   } finally {
     loadingProfile.value = false
@@ -97,6 +101,7 @@ async function handleSaveProfile() {
     const payload: UpdateProfile = {
       language: profileForm.language,
       bufferMinutesAfterLesson: profileForm.bufferMinutesAfterLesson,
+      timezone: profileForm.timezone,
     }
     await updateMyProfile(payload)
     await fetchUser()
@@ -189,6 +194,12 @@ function removeInterval(dayIndex: number, intervalIndex: number) {
               <p class="text-xs text-base-content/50 mt-1">
                 Минимальный перерыв между занятиями
               </p>
+            </fieldset>
+            <fieldset class="fieldset">
+              <legend class="fieldset-legend">Часовой пояс</legend>
+              <select v-model="profileForm.timezone" class="select select-bordered w-full">
+                <option v-for="tz in timezoneOptions" :key="tz" :value="tz">{{ tz }}</option>
+              </select>
             </fieldset>
             <div class="flex justify-end gap-2 mt-2">
               <button class="btn btn-ghost btn-sm" @click="loadProfile">Отмена</button>

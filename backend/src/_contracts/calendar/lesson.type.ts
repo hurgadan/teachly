@@ -6,8 +6,7 @@ export interface Lesson {
   type: LessonTargetType;
   entityId: string;
   title: string;
-  date: string;
-  startTime: string;
+  startAt: string;
   duration: number;
   status: LessonStatus;
   recurring: boolean;

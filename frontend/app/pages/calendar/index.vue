@@ -13,12 +13,31 @@ const weekDays = computed(() => buildWeekDays(currentWeekStart.value))
 const hours = Array.from({ length: 13 }, (_, i) => i + 8) // 8:00 — 20:00
 const HOUR_HEIGHT = 64 // px per hour (h-16)
 
-function getDayLessons(dateStr: string) {
-  return weekLessons.value.filter(lesson => lesson.date === dateStr)
+const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+
+function getLocalDateStr(startAt: string): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    timeZone: userTimezone,
+  }).format(new Date(startAt))
 }
 
-function getLessonStyle(lesson: { time: string; duration: number }) {
-  const [h, m] = lesson.time.split(':').map(Number)
+function getLocalTimeStr(startAt: string): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    hour: '2-digit', minute: '2-digit',
+    timeZone: userTimezone,
+    hour12: false,
+  }).format(new Date(startAt))
+}
+
+function getDayLessons(dateStr: string) {
+  return weekLessons.value.filter(lesson => getLocalDateStr(lesson.startAt) === dateStr)
+}
+
+function getLessonStyle(lesson: { startAt: string; duration: number }) {
+  const parts = getLocalTimeStr(lesson.startAt).split(':').map(Number)
+  const h = parts[0] ?? 0
+  const m = parts[1] ?? 0
   const top = (h - 8) * HOUR_HEIGHT + (m / 60) * HOUR_HEIGHT
   const height = (lesson.duration / 60) * HOUR_HEIGHT
   return { top: `${top}px`, height: `${height}px` }
@@ -166,10 +185,10 @@ function buildWeekDays(startDate: string) {
               v-for="lesson in getDayLessons(day.dateStr)"
               :key="lesson.id"
               :class="['absolute left-0.5 right-0.5 rounded border text-xs p-1.5 overflow-hidden cursor-pointer hover:shadow-md transition-shadow', lessonColors[lesson.status]]"
-              :style="getLessonStyle({ time: lesson.startTime, duration: lesson.duration })"
+              :style="getLessonStyle({ startAt: lesson.startAt, duration: lesson.duration })"
             >
               <p class="font-medium truncate leading-tight">{{ lesson.title }}</p>
-              <p class="opacity-60 text-[10px] mt-0.5">{{ lesson.startTime }} · {{ lesson.duration }} мин</p>
+              <p class="opacity-60 text-[10px] mt-0.5">{{ getLocalTimeStr(lesson.startAt) }} · {{ lesson.duration }} мин</p>
             </div>
           </div>
         </div>
@@ -191,7 +210,7 @@ function buildWeekDays(startDate: string) {
           >
             <div class="card-body p-3 flex-row items-center gap-3">
               <div class="text-sm font-mono font-medium w-12 shrink-0 text-base-content/60">
-                {{ lesson.startTime }}
+                {{ getLocalTimeStr(lesson.startAt) }}
               </div>
               <div class="flex-1 min-w-0">
                 <p class="text-sm font-medium truncate">{{ lesson.title }}</p>

@@ -1,5 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 
+import { LessonsMaterializerService } from './lessons-materializer.service';
+import { localToUtc, utcToLocal } from '../../../_common/utils/timezone';
 import {
   AvailableSlot,
   CreateLesson,
@@ -12,7 +14,6 @@ import { GroupsService } from '../../groups/services/groups.service';
 import { StudentsService } from '../../students/services/students.service';
 import { UsersService } from '../../users/services/users.service';
 import { CALENDAR_SLOT_STEP_MINUTES } from '../constants';
-import { LessonsMaterializerService } from './lessons-materializer.service';
 import { LessonEntity } from '../dao/lesson.entity';
 import { LessonsRepository } from '../repositories/lessons.repository';
 import { RecurringLessonsRepository } from '../repositories/recurring-lessons.repository';
@@ -35,14 +36,10 @@ export class CalendarService {
   ) {}
 
   public async getWeek(teacherId: string, startDate?: string): Promise<Lesson[]> {
-    const weekDates = getWeekDates(startDate);
+    const profile = await this.usersService.getProfile(teacherId);
+    const { startAt, endAt } = getWeekUtcRange(startDate, profile.timezone);
 
-    const lessons = await this.lessonsRepository.findInDateRange(
-      teacherId,
-      weekDates[0].date,
-      weekDates[weekDates.length - 1].date,
-    );
-
+    const lessons = await this.lessonsRepository.findInDateRange(teacherId, startAt, endAt);
     return lessons.map(mapEntityToLesson);
   }
 
@@ -51,32 +48,36 @@ export class CalendarService {
     startDate: string,
     duration: number,
   ): Promise<AvailableSlot[]> {
-    const weekDates = getWeekDates(startDate);
-
-    const [profile, workSchedule, lessons] = await Promise.all([
+    const [profile, workSchedule] = await Promise.all([
       this.usersService.getProfile(teacherId),
       this.usersService.getWorkSchedule(teacherId),
-      this.lessonsRepository.findInDateRange(
-        teacherId,
-        weekDates[0].date,
-        weekDates[weekDates.length - 1].date,
-      ),
     ]);
+
+    const { startAt, endAt, weekDays } = getWeekUtcRange(startDate, profile.timezone);
+
+    const lessons = await this.lessonsRepository.findInDateRange(teacherId, startAt, endAt);
 
     const slots: AvailableSlot[] = [];
 
-    for (const weekDay of weekDates) {
+    for (const weekDay of weekDays) {
       const daySchedule = workSchedule.find((item) => item.dayOfWeek === weekDay.dayOfWeek);
 
       if (!daySchedule?.isWorkday) {
         continue;
       }
 
-      const dayLessons = lessons.filter((lesson) => lesson.date === weekDay.date);
-      const occupied = dayLessons.map((lesson) => ({
-        start: timeToMinutes(lesson.startTime),
-        end: timeToMinutes(lesson.startTime) + lesson.duration + profile.bufferMinutesAfterLesson,
-      }));
+      const dayLessons = lessons.filter((lesson) => {
+        const { dateStr } = utcToLocal(lesson.startAt, profile.timezone);
+        return dateStr === weekDay.date;
+      });
+
+      const occupied = dayLessons.map((lesson) => {
+        const { minutes } = utcToLocal(lesson.startAt, profile.timezone);
+        return {
+          start: minutes,
+          end: minutes + lesson.duration + profile.bufferMinutesAfterLesson,
+        };
+      });
 
       for (const interval of daySchedule.intervals) {
         const intervalStart = timeToMinutes(interval.startTime);
@@ -108,10 +109,10 @@ export class CalendarService {
     teacherId: string,
     data: CreateRecurringLesson,
   ): Promise<Lesson[]> {
-    const target = await this.resolveTarget(teacherId, {
-      studentId: data.studentId,
-      groupId: data.groupId,
-    });
+    const [target, profile] = await Promise.all([
+      this.resolveTarget(teacherId, { studentId: data.studentId, groupId: data.groupId }),
+      this.usersService.getProfile(teacherId),
+    ]);
 
     const uniqueSlots = uniqueRecurringLessonSlots(data.slots);
 
@@ -134,28 +135,34 @@ export class CalendarService {
     await this.lessonsMaterializerService.materializeForRecurringLessons(recurringLessons);
 
     const dates = uniqueSlots.map((slot) => slot.date);
-    const createdLessons = await this.lessonsRepository.findInDateRange(
-      teacherId,
-      dates.sort()[0],
-      dates.sort()[dates.length - 1],
+    const slotStartAts = uniqueSlots.map((slot, i) =>
+      localToUtc(slot.date, recurringLessons[i].startTime, profile.timezone),
     );
 
-    return createdLessons
-      .filter(
-        (lesson) =>
+    const allLessons = await this.lessonsRepository.findInDateRange(
+      teacherId,
+      new Date(Math.min(...slotStartAts.map((d) => d.getTime()))),
+      new Date(Math.max(...slotStartAts.map((d) => d.getTime()))),
+    );
+
+    return allLessons
+      .filter((lesson) => {
+        const { dateStr } = utcToLocal(lesson.startAt, profile.timezone);
+        return (
           lesson.studentId ===
             (target.type === LessonTargetType.STUDENT ? target.entityId : null) &&
           lesson.groupId === (target.type === LessonTargetType.GROUP ? target.entityId : null) &&
-          dates.includes(lesson.date),
-      )
+          dates.includes(dateStr)
+        );
+      })
       .map(mapEntityToLesson);
   }
 
   public async createLesson(teacherId: string, data: CreateLesson): Promise<Lesson> {
-    const target = await this.resolveTarget(teacherId, {
-      studentId: data.studentId,
-      groupId: data.groupId,
-    });
+    const [target, profile] = await Promise.all([
+      this.resolveTarget(teacherId, { studentId: data.studentId, groupId: data.groupId }),
+      this.usersService.getProfile(teacherId),
+    ]);
 
     const availableSlots = await this.getAvailableSlots(teacherId, data.date, data.duration);
     const isAvailable = availableSlots.some(
@@ -166,24 +173,55 @@ export class CalendarService {
       throw new BadRequestException('Selected slot is not available');
     }
 
+    const startAt = localToUtc(data.date, data.startTime, profile.timezone);
+
     const lesson = await this.lessonsRepository.createOne({
       teacherId,
       studentId: target.type === LessonTargetType.STUDENT ? target.entityId : null,
       groupId: target.type === LessonTargetType.GROUP ? target.entityId : null,
       recurringLessonId: null,
-      date: data.date,
-      startTime: data.startTime,
+      startAt,
       duration: data.duration,
       status: LessonStatus.SCHEDULED,
     });
 
     const [createdLesson] = await this.lessonsRepository.findInDateRange(
       teacherId,
-      lesson.date,
-      lesson.date,
+      lesson.startAt,
+      lesson.startAt,
     );
 
     return mapEntityToLesson(createdLesson);
+  }
+
+  public async recalculateTimezone(
+    teacherId: string,
+    oldTimezone: string,
+    newTimezone: string,
+  ): Promise<void> {
+    const now = new Date();
+    const farFuture = new Date('2100-01-01T00:00:00.000Z');
+
+    const futureLessons = await this.lessonsRepository.findInDateRange(teacherId, now, farFuture);
+
+    const scheduledLessons = futureLessons.filter(
+      (lesson) => lesson.status === LessonStatus.SCHEDULED,
+    );
+
+    if (!scheduledLessons.length) {
+      return;
+    }
+
+    const updated = scheduledLessons.map((lesson) => {
+      const { dateStr, minutes } = utcToLocal(lesson.startAt, oldTimezone);
+      const timeStr = minutesToTime(minutes);
+      return {
+        ...lesson,
+        startAt: localToUtc(dateStr, timeStr, newTimezone),
+      };
+    });
+
+    await this.lessonsRepository.createMany(updated);
   }
 
   private async resolveTarget(
@@ -222,25 +260,32 @@ function mapEntityToLesson(lesson: LessonEntity): Lesson {
     title: isStudent
       ? [lesson.student?.firstName, lesson.student?.lastName].filter(Boolean).join(' ')
       : lesson.group?.name || '',
-    date: lesson.date,
-    startTime: lesson.startTime,
+    startAt: lesson.startAt.toISOString(),
     duration: lesson.duration,
     status: lesson.status,
     recurring: !!lesson.recurringLessonId,
   };
 }
 
-function getWeekDates(startDate?: string): { date: string; dayOfWeek: number }[] {
+function getWeekUtcRange(
+  startDate: string | undefined,
+  timezone: string,
+): { startAt: Date; endAt: Date; weekDays: { date: string; dayOfWeek: number }[] } {
   const monday = normalizeToWeekStart(startDate);
 
-  return Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(`${monday}T00:00:00.000Z`);
-    date.setUTCDate(date.getUTCDate() + index);
+  const weekDays = Array.from({ length: 7 }, (_, index) => {
+    const d = new Date(`${monday}T00:00:00.000Z`);
+    d.setUTCDate(d.getUTCDate() + index);
     return {
-      date: date.toISOString().slice(0, 10),
+      date: d.toISOString().slice(0, 10),
       dayOfWeek: index,
     };
   });
+
+  const startAt = localToUtc(weekDays[0].date, '00:00', timezone);
+  const endAt = localToUtc(weekDays[6].date, '23:59', timezone);
+
+  return { startAt, endAt, weekDays };
 }
 
 function normalizeToWeekStart(startDate?: string): string {
@@ -268,9 +313,7 @@ function uniqueRecurringLessonSlots(
   const seen = new Set<string>();
   return slots.filter((slot) => {
     const key = `${slot.dayOfWeek}:${slot.date}:${slot.startTime}`;
-    if (seen.has(key)) {
-      return false;
-    }
+    if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
