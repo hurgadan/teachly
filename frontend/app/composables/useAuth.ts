@@ -62,7 +62,8 @@ export function useAuth() {
   }
 
   async function register(email: string, password: string) {
-    const payload: CreateUser = { email, password }
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    const payload: CreateUser = { email, password, timezone }
     await createUser(payload)
 
     await login(email, password)

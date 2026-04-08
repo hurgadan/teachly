@@ -93,6 +93,7 @@ describe('UsersService', () => {
       const createUserDto = {
         email,
         password: faker.internet.password(),
+        timezone: 'Europe/Moscow',
       };
 
       const mockCreatedUser = {
@@ -155,6 +156,7 @@ describe('UsersService', () => {
         email: faker.internet.email(),
         passwordHash: faker.string.sample(64),
         language: Language.RU,
+        timezone: 'Europe/Moscow',
         bufferMinutesAfterLesson: 0,
         workSchedules: [],
         createdAt: new Date(),

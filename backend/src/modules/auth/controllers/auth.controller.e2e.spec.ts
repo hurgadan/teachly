@@ -60,6 +60,7 @@ describe('auth.controller.e2e.spec.ts', () => {
         email,
         passwordHash,
         language: 'ru' as const,
+        timezone: 'Europe/Moscow',
         bufferMinutesAfterLesson: 0,
         workSchedules: [],
         createdAt: new Date(),

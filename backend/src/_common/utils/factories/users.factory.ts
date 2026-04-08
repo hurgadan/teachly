@@ -7,7 +7,13 @@ import { UserEntity } from '../../../modules/users/dao/user.entity';
 
 type RequiredUserParams = Omit<
   UserEntity,
-  'id' | 'createdAt' | 'updatedAt' | 'language' | 'bufferMinutesAfterLesson' | 'workSchedules'
+  | 'id'
+  | 'createdAt'
+  | 'updatedAt'
+  | 'language'
+  | 'timezone'
+  | 'bufferMinutesAfterLesson'
+  | 'workSchedules'
 >;
 
 const getDefaultParam = (): RequiredUserParams => {

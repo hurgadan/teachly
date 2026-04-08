@@ -20,6 +20,10 @@ export class TeacherProfileDto implements TeacherProfile {
 
   @ApiProperty()
   @Expose()
+  timezone: string;
+
+  @ApiProperty()
+  @Expose()
   bufferMinutesAfterLesson: number;
 
   @ApiProperty({ type: [WorkScheduleDto] })

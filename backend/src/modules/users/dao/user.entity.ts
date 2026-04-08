@@ -32,6 +32,14 @@ export class UserEntity {
   public language: Language;
 
   @Column({
+    type: 'varchar',
+    length: 64,
+    nullable: false,
+    default: 'Europe/Moscow',
+  })
+  public timezone: string;
+
+  @Column({
     type: 'int',
     nullable: false,
     default: 0,

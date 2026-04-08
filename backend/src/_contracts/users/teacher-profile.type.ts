@@ -5,6 +5,7 @@ export interface TeacherProfile {
   id: string;
   email: string;
   language: Language;
+  timezone: string;
   bufferMinutesAfterLesson: number;
   workSchedules: WorkSchedule[];
   createdAt: string;
