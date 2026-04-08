@@ -16,9 +16,9 @@ import { transformToDto } from '../../../_common/utils/transform-to-dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { AvailableSlotDto } from '../dto/available-slot.dto';
 import { AvailableSlotsQueryDto } from '../dto/available-slots-query.dto';
-import { CalendarLessonDto } from '../dto/calendar-lesson.dto';
-import { CreateOneTimeLessonDto } from '../dto/create-one-time-lesson.dto';
-import { CreateRecurringScheduleDto } from '../dto/create-recurring-schedule.dto';
+import { CreateLessonDto } from '../dto/create-lesson.dto';
+import { CreateRecurringLessonDto } from '../dto/create-recurring-lesson.dto';
+import { LessonDto } from '../dto/lesson.dto';
 import { CalendarService } from '../services/calendar.service';
 
 @ApiTags('Calendar')
@@ -29,13 +29,13 @@ export class CalendarController {
 
   @Get('week')
   @ApiOperation({ summary: 'Get calendar week lessons' })
-  @ApiOkResponse({ type: [CalendarLessonDto] })
+  @ApiOkResponse({ type: [LessonDto] })
   public async getWeek(
     @Request() req: RequestExtended,
     @Query('startDate') startDate?: string,
-  ): Promise<CalendarLessonDto[]> {
+  ): Promise<LessonDto[]> {
     const lessons = await this.calendarService.getWeek(req.user!.id, startDate);
-    return lessons.map((lesson) => transformToDto(CalendarLessonDto, lesson));
+    return lessons.map((lesson) => transformToDto(LessonDto, lesson));
   }
 
   @Get('available-slots')
@@ -56,25 +56,25 @@ export class CalendarController {
 
   @Post('recurring-lessons')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create recurring schedule' })
-  @ApiOkResponse({ type: [CalendarLessonDto] })
-  public async createRecurringSchedule(
+  @ApiOperation({ summary: 'Create recurring lesson' })
+  @ApiOkResponse({ type: [LessonDto] })
+  public async createRecurringLesson(
     @Request() req: RequestExtended,
-    @Body() data: CreateRecurringScheduleDto,
-  ): Promise<CalendarLessonDto[]> {
-    const lessons = await this.calendarService.createRecurringSchedule(req.user!.id, data);
-    return lessons.map((lesson) => transformToDto(CalendarLessonDto, lesson));
+    @Body() data: CreateRecurringLessonDto,
+  ): Promise<LessonDto[]> {
+    const lessons = await this.calendarService.createRecurringLesson(req.user!.id, data);
+    return lessons.map((lesson) => transformToDto(LessonDto, lesson));
   }
 
   @Post('lessons')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create one-time lesson' })
-  @ApiOkResponse({ type: CalendarLessonDto })
-  public async createOneTimeLesson(
+  @ApiOperation({ summary: 'Create lesson' })
+  @ApiOkResponse({ type: LessonDto })
+  public async createLesson(
     @Request() req: RequestExtended,
-    @Body() data: CreateOneTimeLessonDto,
-  ): Promise<CalendarLessonDto> {
-    const lesson = await this.calendarService.createOneTimeLesson(req.user!.id, data);
-    return transformToDto(CalendarLessonDto, lesson);
+    @Body() data: CreateLessonDto,
+  ): Promise<LessonDto> {
+    const lesson = await this.calendarService.createLesson(req.user!.id, data);
+    return transformToDto(LessonDto, lesson);
   }
 }

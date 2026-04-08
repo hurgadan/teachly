@@ -1,9 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 
-import { CalendarLesson, LessonStatus, LessonTargetType } from '../../../_contracts/calendar';
+import { Lesson, LessonStatus, LessonTargetType } from '../../../_contracts/calendar';
 
-export class CalendarLessonDto implements CalendarLesson {
+export class LessonDto implements Lesson {
   @ApiProperty()
   @Expose()
   public id: string;
@@ -27,10 +27,6 @@ export class CalendarLessonDto implements CalendarLesson {
   @ApiProperty()
   @Expose()
   public startTime: string;
-
-  @ApiProperty()
-  @Expose()
-  public endTime: string;
 
   @ApiProperty()
   @Expose()

@@ -4,3 +4,4 @@ export const CALENDAR_DAY_OF_WEEK_MIN = 0;
 export const CALENDAR_DAY_OF_WEEK_MAX = 6;
 export const CALENDAR_TIME_REGEXP = /^([01]\d|2[0-3]):[0-5]\d$/;
 export const CALENDAR_SLOT_STEP_MINUTES = 15;
+export const CALENDAR_MATERIALIZE_WEEKS_AHEAD = 4;

@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import type { CalendarLesson } from '~/types/calendar'
+import type { Lesson } from '~/types/calendar'
 
 const { getWeekLessons } = useCalendarApi()
 const showCreateLesson = ref(false)
 const { show } = useToast()
 const currentWeekStart = ref(getWeekStart())
-const weekLessons = ref<CalendarLesson[]>([])
+const weekLessons = ref<Lesson[]>([])
 const loading = ref(true)
 
 const weekDays = computed(() => buildWeekDays(currentWeekStart.value))

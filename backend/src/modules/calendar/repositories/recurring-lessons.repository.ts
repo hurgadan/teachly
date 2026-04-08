@@ -17,6 +17,12 @@ export class RecurringLessonsRepository {
     return this.repository.save(data);
   }
 
+  public async findAllActive(): Promise<RecurringLessonEntity[]> {
+    return this.repository.find({
+      where: { isActive: true },
+    });
+  }
+
   public async findActiveByTeacherAndDays(
     teacherId: string,
     dayOfWeeks: number[],

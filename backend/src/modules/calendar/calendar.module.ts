@@ -10,6 +10,7 @@ import { RecurringLessonEntity } from './dao/recurring-lesson.entity';
 import { LessonsRepository } from './repositories/lessons.repository';
 import { RecurringLessonsRepository } from './repositories/recurring-lessons.repository';
 import { CalendarService } from './services/calendar.service';
+import { LessonsMaterializerService } from './services/lessons-materializer.service';
 
 @Module({
   imports: [
@@ -19,7 +20,12 @@ import { CalendarService } from './services/calendar.service';
     GroupsModule,
   ],
   controllers: [CalendarController],
-  providers: [LessonsRepository, RecurringLessonsRepository, CalendarService],
+  providers: [
+    LessonsRepository,
+    RecurringLessonsRepository,
+    CalendarService,
+    LessonsMaterializerService,
+  ],
   exports: [CalendarService],
 })
 export class CalendarModule {}

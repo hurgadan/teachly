@@ -2,14 +2,14 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 import { IsDateString, IsInt, IsString, Matches, Max, Min } from 'class-validator';
 
-import { ScheduleSlot } from '../../../_contracts/calendar';
+import { RecurringLessonSlot } from '../../../_contracts/calendar';
 import {
   CALENDAR_DAY_OF_WEEK_MAX,
   CALENDAR_DAY_OF_WEEK_MIN,
   CALENDAR_TIME_REGEXP,
 } from '../constants';
 
-export class ScheduleSlotDto implements ScheduleSlot {
+export class RecurringLessonSlotDto implements RecurringLessonSlot {
   @ApiProperty()
   @Expose()
   @IsDateString()

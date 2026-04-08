@@ -15,8 +15,4 @@ export class AvailableSlotDto implements AvailableSlot {
   @ApiProperty()
   @Expose()
   public startTime: string;
-
-  @ApiProperty()
-  @Expose()
-  public endTime: string;
 }

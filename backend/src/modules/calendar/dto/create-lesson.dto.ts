@@ -11,10 +11,10 @@ import {
   Min,
 } from 'class-validator';
 
-import { CreateOneTimeLesson } from '../../../_contracts/calendar';
+import { CreateLesson } from '../../../_contracts/calendar';
 import { CALENDAR_DURATION_MAX, CALENDAR_DURATION_MIN, CALENDAR_TIME_REGEXP } from '../constants';
 
-export class CreateOneTimeLessonDto implements CreateOneTimeLesson {
+export class CreateLessonDto implements CreateLesson {
   @ApiPropertyOptional({ nullable: true })
   @Expose()
   @IsOptional()

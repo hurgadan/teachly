@@ -89,7 +89,6 @@ describe('calendar.controller.e2e.spec.ts', () => {
       recurringLessonId: null,
       date: '2026-04-06',
       startTime: '10:00',
-      endTime: '11:00',
       duration: 60,
       status: LessonStatus.SCHEDULED,
     });
@@ -102,8 +101,8 @@ describe('calendar.controller.e2e.spec.ts', () => {
 
     expect(result.body).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ date: '2026-04-06', startTime: '09:00', endTime: '10:00' }),
-        expect.objectContaining({ date: '2026-04-06', startTime: '11:00', endTime: '12:00' }),
+        expect.objectContaining({ date: '2026-04-06', startTime: '09:00' }),
+        expect.objectContaining({ date: '2026-04-06', startTime: '11:00' }),
       ]),
     );
   });
@@ -157,7 +156,7 @@ describe('calendar.controller.e2e.spec.ts', () => {
     );
   });
 
-  it('should create one-time lesson', async () => {
+  it('should create lesson', async () => {
     const teacher = await userFactory(testingModule);
     const token = jwtService.sign({ id: teacher.id, email: teacher.email });
     const student = await studentsRepository.save({

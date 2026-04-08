@@ -67,9 +67,6 @@ export class LessonEntity {
   @Column({ type: 'varchar', name: 'start_time', length: 5, nullable: false })
   public startTime: string;
 
-  @Column({ type: 'varchar', name: 'end_time', length: 5, nullable: false })
-  public endTime: string;
-
   @Column({ type: 'int', nullable: false })
   public duration: number;
 

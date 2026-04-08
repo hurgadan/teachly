@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AvailableSlot, ScheduleSlot } from '~/types/calendar'
+import type { AvailableSlot, RecurringLessonSlot } from '~/types/calendar'
 
 const props = defineProps<{
   open: boolean
@@ -10,7 +10,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ close: []; saved: [] }>()
 
-const { createOneTimeLesson, createRecurringSchedule, getAvailableSlots } = useCalendarApi()
+const { createLesson, createRecurringLesson, getAvailableSlots } = useCalendarApi()
 const { getMyWorkSchedule } = useUsersApi()
 const { show } = useToast()
 
@@ -26,7 +26,7 @@ const duration = ref(props.defaultDuration)
 const weekStartDate = ref(getWeekStartDate())
 const workSchedule = ref<Array<{ dayOfWeek: number; isWorkday: boolean }>>([])
 const apiSlots = ref<AvailableSlot[]>([])
-const selectedSlots = ref<ScheduleSlot[]>([])
+const selectedSlots = ref<RecurringLessonSlot[]>([])
 const selectedOneTimeSlot = ref<AvailableSlot | null>(null)
 
 watch(() => props.defaultDuration, (val) => {
@@ -120,7 +120,7 @@ async function handleSave() {
         return
       }
 
-      await createOneTimeLesson({
+      await createLesson({
         duration: duration.value,
         date: selectedOneTimeSlot.value.date,
         startTime: selectedOneTimeSlot.value.startTime,
@@ -128,7 +128,7 @@ async function handleSave() {
       })
       show(`Разовое занятие для «${props.entityName}» создано`)
     } else {
-      await createRecurringSchedule({
+      await createRecurringLesson({
         duration: duration.value,
         ...(props.entityType === 'student' ? { studentId: props.entityId } : { groupId: props.entityId }),
         slots: selectedSlots.value,
@@ -170,6 +170,10 @@ function isDayOff(dayOfWeek: number) {
   return workSchedule.value.some((day) => day.dayOfWeek === dayOfWeek && !day.isWorkday)
 }
 
+function getSlotEndTime(startTime: string) {
+  return minutesToTime(timeToMinutes(startTime) + duration.value)
+}
+
 function getWeekStartDate() {
   const current = new Date()
   const mondayOffset = current.getDay() === 0 ? -6 : 1 - current.getDay()
@@ -189,6 +193,17 @@ function buildWeekDays(startDate: string) {
       dayOfWeek: index,
     }
   })
+}
+
+function timeToMinutes(value: string) {
+  const [hours, minutes] = value.split(':').map(Number)
+  return hours * 60 + minutes
+}
+
+function minutesToTime(value: number) {
+  const hours = Math.floor(value / 60)
+  const minutes = value % 60
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
 }
 </script>
 
@@ -277,7 +292,7 @@ function buildWeekDays(startDate: string) {
             ]"
             @click="mode === 'one-time' ? selectOneTimeSlot(slot) : toggleSlot(slot)"
           >
-            {{ slot.startTime }} – {{ slot.endTime }}
+            {{ slot.startTime }} – {{ getSlotEndTime(slot.startTime) }}
           </button>
         </div>
       </div>
@@ -305,7 +320,7 @@ function buildWeekDays(startDate: string) {
         <p class="text-sm font-medium mb-1">Выбран слот для разового занятия:</p>
         <p class="text-sm text-base-content/70">
           {{ selectedDay?.short }}, {{ selectedDay?.dateLabel }} ·
-          {{ selectedOneTimeSlot.startTime }} – {{ selectedOneTimeSlot.endTime }}
+          {{ selectedOneTimeSlot.startTime }} – {{ getSlotEndTime(selectedOneTimeSlot.startTime) }}
         </p>
       </div>
 

@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { CalendarService } from './calendar.service';
+import { LessonsMaterializerService } from './lessons-materializer.service';
 import { LessonStatus, LessonTargetType } from '../../../_contracts/calendar';
 import { GroupsService } from '../../groups/services/groups.service';
 import { StudentsService } from '../../students/services/students.service';
@@ -21,6 +22,7 @@ describe('CalendarService', () => {
 
   const mockRecurringLessonsRepository = {
     createMany: jest.fn(),
+    findAllActive: jest.fn(),
     findActiveByTeacherAndDays: jest.fn(),
   };
 
@@ -35,6 +37,10 @@ describe('CalendarService', () => {
 
   const mockGroupsService = {
     getById: jest.fn(),
+  };
+
+  const mockLessonsMaterializerService = {
+    materializeForRecurringLessons: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -61,6 +67,10 @@ describe('CalendarService', () => {
           provide: GroupsService,
           useValue: mockGroupsService,
         },
+        {
+          provide: LessonsMaterializerService,
+          useValue: mockLessonsMaterializerService,
+        },
       ],
     }).compile();
 
@@ -72,7 +82,6 @@ describe('CalendarService', () => {
   });
 
   it('should calculate available slots with teacher buffer', async () => {
-    mockRecurringLessonsRepository.findActiveByTeacherAndDays.mockResolvedValue([]);
     mockUsersService.getProfile.mockResolvedValue({
       bufferMinutesAfterLesson: 15,
     });
@@ -87,7 +96,7 @@ describe('CalendarService', () => {
       {
         date: '2026-04-06',
         startTime: '10:00',
-        endTime: '11:00',
+        duration: 60,
       },
     ]);
 
@@ -97,13 +106,11 @@ describe('CalendarService', () => {
       date: '2026-04-06',
       dayOfWeek: 0,
       startTime: '09:00',
-      endTime: '10:00',
     });
     expect(result).toContainEqual({
       date: '2026-04-06',
       dayOfWeek: 0,
       startTime: '11:15',
-      endTime: '12:15',
     });
     expect(result).not.toContainEqual(
       expect.objectContaining({
@@ -113,7 +120,7 @@ describe('CalendarService', () => {
     );
   });
 
-  it('should reject one-time lesson when slot is busy', async () => {
+  it('should reject lesson when slot is busy', async () => {
     mockStudentsService.getById.mockResolvedValue({
       id: 'student-1',
       firstName: 'Anna',
@@ -124,12 +131,11 @@ describe('CalendarService', () => {
         date: '2026-04-06',
         dayOfWeek: 0,
         startTime: '09:00',
-        endTime: '10:00',
       },
     ]);
 
     await expect(
-      service.createOneTimeLesson('teacher-1', {
+      service.createLesson('teacher-1', {
         studentId: 'student-1',
         date: '2026-04-06',
         startTime: '10:00',
@@ -139,7 +145,6 @@ describe('CalendarService', () => {
   });
 
   it('should map week lessons into calendar response', async () => {
-    mockRecurringLessonsRepository.findActiveByTeacherAndDays.mockResolvedValue([]);
     mockLessonsRepository.findInDateRange.mockResolvedValue([
       {
         id: 'lesson-1',
@@ -148,7 +153,6 @@ describe('CalendarService', () => {
         recurringLessonId: 'recurring-1',
         date: '2026-04-06',
         startTime: '09:00',
-        endTime: '10:00',
         duration: 60,
         status: LessonStatus.SCHEDULED,
         student: { firstName: 'Anna', lastName: 'Petrova' },
@@ -166,7 +170,6 @@ describe('CalendarService', () => {
         title: 'Anna Petrova',
         date: '2026-04-06',
         startTime: '09:00',
-        endTime: '10:00',
         duration: 60,
         status: LessonStatus.SCHEDULED,
         recurring: true,

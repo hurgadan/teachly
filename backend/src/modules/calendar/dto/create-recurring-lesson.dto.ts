@@ -2,11 +2,11 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 import { IsArray, IsInt, IsOptional, IsUUID, Max, Min, ValidateNested } from 'class-validator';
 
-import { CreateRecurringSchedule } from '../../../_contracts/calendar';
+import { CreateRecurringLesson } from '../../../_contracts/calendar';
 import { CALENDAR_DURATION_MAX, CALENDAR_DURATION_MIN } from '../constants';
-import { ScheduleSlotDto } from './schedule-slot.dto';
+import { RecurringLessonSlotDto } from './recurring-lesson-slot.dto';
 
-export class CreateRecurringScheduleDto implements CreateRecurringSchedule {
+export class CreateRecurringLessonDto implements CreateRecurringLesson {
   @ApiPropertyOptional({ nullable: true })
   @Expose()
   @IsOptional()
@@ -27,10 +27,10 @@ export class CreateRecurringScheduleDto implements CreateRecurringSchedule {
   @Max(CALENDAR_DURATION_MAX)
   public duration: number;
 
-  @ApiProperty({ type: [ScheduleSlotDto] })
+  @ApiProperty({ type: [RecurringLessonSlotDto] })
   @Expose()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => ScheduleSlotDto)
-  public slots: ScheduleSlotDto[];
+  @Type(() => RecurringLessonSlotDto)
+  public slots: RecurringLessonSlotDto[];
 }

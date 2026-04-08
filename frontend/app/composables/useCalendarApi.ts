@@ -2,9 +2,9 @@ import { CalendarApi } from '@contracts/calendar'
 
 import type {
   AvailableSlot,
-  CalendarLesson,
-  CreateOneTimeLesson,
-  CreateRecurringSchedule,
+  CreateLesson,
+  CreateRecurringLesson,
+  Lesson,
 } from '~/types/calendar'
 
 type ApiRequest = ReturnType<typeof useApi>['api']
@@ -14,9 +14,9 @@ class CalendarHttpApi extends CalendarApi {
     super()
   }
 
-  protected getWeek(startDate?: string): Promise<CalendarLesson[]> {
+  protected getWeek(startDate?: string): Promise<Lesson[]> {
     const query = startDate ? `?startDate=${encodeURIComponent(startDate)}` : ''
-    return this.request<CalendarLesson[]>(`${this.baseUrl}/week${query}`)
+    return this.request<Lesson[]>(`${this.baseUrl}/week${query}`)
   }
 
   protected getAvailableSlots(startDate: string, duration: number): Promise<AvailableSlot[]> {
@@ -28,15 +28,15 @@ class CalendarHttpApi extends CalendarApi {
     return this.request<AvailableSlot[]>(`${this.baseUrl}/available-slots?${query.toString()}`)
   }
 
-  protected createRecurringSchedule(data: CreateRecurringSchedule): Promise<CalendarLesson[]> {
-    return this.request<CalendarLesson[]>(`${this.baseUrl}/recurring-lessons`, {
+  protected createRecurringLesson(data: CreateRecurringLesson): Promise<Lesson[]> {
+    return this.request<Lesson[]>(`${this.baseUrl}/recurring-lessons`, {
       method: 'POST',
       body: data,
     })
   }
 
-  protected createOneTimeLesson(data: CreateOneTimeLesson): Promise<CalendarLesson> {
-    return this.request<CalendarLesson>(`${this.baseUrl}/lessons`, {
+  protected createLesson(data: CreateLesson): Promise<Lesson> {
+    return this.request<Lesson>(`${this.baseUrl}/lessons`, {
       method: 'POST',
       body: data,
     })
@@ -50,12 +50,12 @@ class CalendarHttpApi extends CalendarApi {
     return this.getAvailableSlots(startDate, duration)
   }
 
-  public saveRecurringSchedule(data: CreateRecurringSchedule) {
-    return this.createRecurringSchedule(data)
+  public saveRecurringLesson(data: CreateRecurringLesson) {
+    return this.createRecurringLesson(data)
   }
 
-  public createSingleLesson(data: CreateOneTimeLesson) {
-    return this.createOneTimeLesson(data)
+  public createSingleLesson(data: CreateLesson) {
+    return this.createLesson(data)
   }
 }
 
@@ -64,8 +64,8 @@ export function useCalendarApi() {
   const calendarApi = new CalendarHttpApi(api)
 
   return {
-    createOneTimeLesson: (payload: CreateOneTimeLesson) => calendarApi.createSingleLesson(payload),
-    createRecurringSchedule: (payload: CreateRecurringSchedule) => calendarApi.saveRecurringSchedule(payload),
+    createLesson: (payload: CreateLesson) => calendarApi.createSingleLesson(payload),
+    createRecurringLesson: (payload: CreateRecurringLesson) => calendarApi.saveRecurringLesson(payload),
     getAvailableSlots: (startDate: string, duration: number) => calendarApi.getWeekAvailableSlots(startDate, duration),
     getWeekLessons: (startDate?: string) => calendarApi.getWeekLessons(startDate),
   }

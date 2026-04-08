@@ -1,9 +1,9 @@
 export type {
   AvailableSlot,
-  CalendarLesson,
-  CreateOneTimeLesson,
-  CreateRecurringSchedule,
+  CreateLesson,
+  CreateRecurringLesson,
+  Lesson,
   LessonStatus,
   LessonTargetType,
-  ScheduleSlot,
+  RecurringLessonSlot,
 } from '@contracts/calendar'

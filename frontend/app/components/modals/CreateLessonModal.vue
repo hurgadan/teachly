@@ -6,7 +6,7 @@ import type { Student } from '~/types/students'
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: []; created: [] }>()
 
-const { createOneTimeLesson, createRecurringSchedule, getAvailableSlots } = useCalendarApi()
+const { createLesson, createRecurringLesson, getAvailableSlots } = useCalendarApi()
 const { listGroups } = useGroupsApi()
 const { listStudents } = useStudentsApi()
 const { getMyWorkSchedule } = useUsersApi()
@@ -132,7 +132,7 @@ async function handleSubmit() {
     loading.value = true
 
     if (mode.value === 'one-time' && selectedSlot.value) {
-      await createOneTimeLesson({
+      await createLesson({
         ...payload,
         date: selectedSlot.value.date,
         startTime: selectedSlot.value.startTime,
@@ -140,7 +140,7 @@ async function handleSubmit() {
       })
       show('Разовое занятие создано')
     } else {
-      await createRecurringSchedule({
+      await createRecurringLesson({
         ...payload,
         duration: form.duration,
         slots: selectedSlots.value,
@@ -241,6 +241,10 @@ function resetForm() {
   selectedSlots.value = []
 }
 
+function getSlotEndTime(startTime: string) {
+  return minutesToTime(timeToMinutes(startTime) + form.duration)
+}
+
 function getWeekStartDate() {
   const current = new Date()
   const mondayOffset = current.getDay() === 0 ? -6 : 1 - current.getDay()
@@ -266,6 +270,17 @@ function buildWeekDays(startDate: string) {
       dayOfWeek: index,
     }
   })
+}
+
+function timeToMinutes(value: string) {
+  const [hours, minutes] = value.split(':').map(Number)
+  return hours * 60 + minutes
+}
+
+function minutesToTime(value: number) {
+  const hours = Math.floor(value / 60)
+  const minutes = value % 60
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
 }
 </script>
 
@@ -394,7 +409,7 @@ function buildWeekDays(startDate: string) {
               ]"
               @click="mode === 'one-time' ? selectSlot(slot) : toggleRecurringSlot(slot)"
             >
-              {{ slot.startTime }} – {{ slot.endTime }}
+              {{ slot.startTime }} – {{ getSlotEndTime(slot.startTime) }}
             </button>
           </div>
         </div>
@@ -403,7 +418,7 @@ function buildWeekDays(startDate: string) {
           <p class="text-sm font-medium mb-1">Выбран слот:</p>
           <p class="text-sm text-base-content/70">
             {{ selectedDay?.short }}, {{ selectedDay?.dateLabel }} ·
-            {{ selectedSlot.startTime }} – {{ selectedSlot.endTime }}
+            {{ selectedSlot.startTime }} – {{ getSlotEndTime(selectedSlot.startTime) }}
           </p>
         </div>
 

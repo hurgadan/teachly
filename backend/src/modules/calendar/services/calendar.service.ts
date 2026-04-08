@@ -2,9 +2,9 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 
 import {
   AvailableSlot,
-  CalendarLesson,
-  CreateOneTimeLesson,
-  CreateRecurringSchedule,
+  CreateLesson,
+  CreateRecurringLesson,
+  Lesson,
   LessonStatus,
   LessonTargetType,
 } from '../../../_contracts/calendar';
@@ -12,6 +12,7 @@ import { GroupsService } from '../../groups/services/groups.service';
 import { StudentsService } from '../../students/services/students.service';
 import { UsersService } from '../../users/services/users.service';
 import { CALENDAR_SLOT_STEP_MINUTES } from '../constants';
+import { LessonsMaterializerService } from './lessons-materializer.service';
 import { LessonEntity } from '../dao/lesson.entity';
 import { LessonsRepository } from '../repositories/lessons.repository';
 import { RecurringLessonsRepository } from '../repositories/recurring-lessons.repository';
@@ -30,11 +31,11 @@ export class CalendarService {
     private readonly usersService: UsersService,
     private readonly studentsService: StudentsService,
     private readonly groupsService: GroupsService,
+    private readonly lessonsMaterializerService: LessonsMaterializerService,
   ) {}
 
-  public async getWeek(teacherId: string, startDate?: string): Promise<CalendarLesson[]> {
+  public async getWeek(teacherId: string, startDate?: string): Promise<Lesson[]> {
     const weekDates = getWeekDates(startDate);
-    await this.ensureRecurringLessonsForWeek(teacherId, weekDates);
 
     const lessons = await this.lessonsRepository.findInDateRange(
       teacherId,
@@ -42,7 +43,7 @@ export class CalendarService {
       weekDates[weekDates.length - 1].date,
     );
 
-    return lessons.map(mapLessonToCalendarLesson);
+    return lessons.map(mapEntityToLesson);
   }
 
   public async getAvailableSlots(
@@ -51,7 +52,6 @@ export class CalendarService {
     duration: number,
   ): Promise<AvailableSlot[]> {
     const weekDates = getWeekDates(startDate);
-    await this.ensureRecurringLessonsForWeek(teacherId, weekDates);
 
     const [profile, workSchedule, lessons] = await Promise.all([
       this.usersService.getProfile(teacherId),
@@ -75,7 +75,7 @@ export class CalendarService {
       const dayLessons = lessons.filter((lesson) => lesson.date === weekDay.date);
       const occupied = dayLessons.map((lesson) => ({
         start: timeToMinutes(lesson.startTime),
-        end: timeToMinutes(lesson.endTime) + profile.bufferMinutesAfterLesson,
+        end: timeToMinutes(lesson.startTime) + lesson.duration + profile.bufferMinutesAfterLesson,
       }));
 
       for (const interval of daySchedule.intervals) {
@@ -95,7 +95,6 @@ export class CalendarService {
               date: weekDay.date,
               dayOfWeek: weekDay.dayOfWeek,
               startTime: minutesToTime(cursor),
-              endTime: minutesToTime(slotEnd),
             });
           }
         }
@@ -105,16 +104,16 @@ export class CalendarService {
     return slots;
   }
 
-  public async createRecurringSchedule(
+  public async createRecurringLesson(
     teacherId: string,
-    data: CreateRecurringSchedule,
-  ): Promise<CalendarLesson[]> {
+    data: CreateRecurringLesson,
+  ): Promise<Lesson[]> {
     const target = await this.resolveTarget(teacherId, {
       studentId: data.studentId,
       groupId: data.groupId,
     });
 
-    const uniqueSlots = uniqueScheduleSlots(data.slots);
+    const uniqueSlots = uniqueRecurringLessonSlots(data.slots);
 
     if (!uniqueSlots.length) {
       throw new BadRequestException('At least one slot is required');
@@ -127,44 +126,12 @@ export class CalendarService {
         groupId: target.type === LessonTargetType.GROUP ? target.entityId : null,
         dayOfWeek: slot.dayOfWeek,
         startTime: slot.startTime,
-        endTime: minutesToTime(timeToMinutes(slot.startTime) + data.duration),
         duration: data.duration,
         isActive: true,
       })),
     );
 
-    const existingLessons = await this.lessonsRepository.findByRecurringLessonsAndDates(
-      recurringLessons.map((item) => item.id),
-      uniqueSlots.map((slot) => slot.date),
-    );
-
-    const existingKeys = new Set(
-      existingLessons.map((lesson) => `${lesson.recurringLessonId}:${lesson.date}`),
-    );
-
-    const lessonsToCreate = recurringLessons
-      .map((recurringLesson, index) => ({
-        recurringLesson,
-        slot: uniqueSlots[index],
-      }))
-      .filter(
-        ({ recurringLesson, slot }) => !existingKeys.has(`${recurringLesson.id}:${slot.date}`),
-      )
-      .map(({ recurringLesson, slot }) => ({
-        teacherId,
-        studentId: recurringLesson.studentId,
-        groupId: recurringLesson.groupId,
-        recurringLessonId: recurringLesson.id,
-        date: slot.date,
-        startTime: recurringLesson.startTime,
-        endTime: recurringLesson.endTime,
-        duration: recurringLesson.duration,
-        status: LessonStatus.SCHEDULED,
-      }));
-
-    if (lessonsToCreate.length) {
-      await this.lessonsRepository.createMany(lessonsToCreate);
-    }
+    await this.lessonsMaterializerService.materializeForRecurringLessons(recurringLessons);
 
     const dates = uniqueSlots.map((slot) => slot.date);
     const createdLessons = await this.lessonsRepository.findInDateRange(
@@ -181,25 +148,18 @@ export class CalendarService {
           lesson.groupId === (target.type === LessonTargetType.GROUP ? target.entityId : null) &&
           dates.includes(lesson.date),
       )
-      .map(mapLessonToCalendarLesson);
+      .map(mapEntityToLesson);
   }
 
-  public async createOneTimeLesson(
-    teacherId: string,
-    data: CreateOneTimeLesson,
-  ): Promise<CalendarLesson> {
+  public async createLesson(teacherId: string, data: CreateLesson): Promise<Lesson> {
     const target = await this.resolveTarget(teacherId, {
       studentId: data.studentId,
       groupId: data.groupId,
     });
 
     const availableSlots = await this.getAvailableSlots(teacherId, data.date, data.duration);
-    const expectedEndTime = minutesToTime(timeToMinutes(data.startTime) + data.duration);
     const isAvailable = availableSlots.some(
-      (slot) =>
-        slot.date === data.date &&
-        slot.startTime === data.startTime &&
-        slot.endTime === expectedEndTime,
+      (slot) => slot.date === data.date && slot.startTime === data.startTime,
     );
 
     if (!isAvailable) {
@@ -213,7 +173,6 @@ export class CalendarService {
       recurringLessonId: null,
       date: data.date,
       startTime: data.startTime,
-      endTime: expectedEndTime,
       duration: data.duration,
       status: LessonStatus.SCHEDULED,
     });
@@ -224,60 +183,7 @@ export class CalendarService {
       lesson.date,
     );
 
-    return mapLessonToCalendarLesson(createdLesson);
-  }
-
-  private async ensureRecurringLessonsForWeek(
-    teacherId: string,
-    weekDates: { date: string; dayOfWeek: number }[],
-  ): Promise<void> {
-    const recurringLessons = await this.recurringLessonsRepository.findActiveByTeacherAndDays(
-      teacherId,
-      weekDates.map((item) => item.dayOfWeek),
-    );
-
-    if (!recurringLessons.length) {
-      return;
-    }
-
-    const existingLessons = await this.lessonsRepository.findByRecurringLessonsAndDates(
-      recurringLessons.map((item) => item.id),
-      weekDates.map((item) => item.date),
-    );
-
-    const existingKeys = new Set(
-      existingLessons.map((lesson) => `${lesson.recurringLessonId}:${lesson.date}`),
-    );
-
-    const lessonsToCreate = recurringLessons.flatMap((recurringLesson) => {
-      const weekDay = weekDates.find((item) => item.dayOfWeek === recurringLesson.dayOfWeek);
-      if (!weekDay) {
-        return [];
-      }
-
-      const key = `${recurringLesson.id}:${weekDay.date}`;
-      if (existingKeys.has(key)) {
-        return [];
-      }
-
-      return [
-        {
-          teacherId,
-          studentId: recurringLesson.studentId,
-          groupId: recurringLesson.groupId,
-          recurringLessonId: recurringLesson.id,
-          date: weekDay.date,
-          startTime: recurringLesson.startTime,
-          endTime: recurringLesson.endTime,
-          duration: recurringLesson.duration,
-          status: LessonStatus.SCHEDULED,
-        },
-      ];
-    });
-
-    if (lessonsToCreate.length) {
-      await this.lessonsRepository.createMany(lessonsToCreate);
-    }
+    return mapEntityToLesson(createdLesson);
   }
 
   private async resolveTarget(
@@ -306,7 +212,7 @@ export class CalendarService {
   }
 }
 
-function mapLessonToCalendarLesson(lesson: LessonEntity): CalendarLesson {
+function mapEntityToLesson(lesson: LessonEntity): Lesson {
   const isStudent = !!lesson.studentId;
 
   return {
@@ -318,7 +224,6 @@ function mapLessonToCalendarLesson(lesson: LessonEntity): CalendarLesson {
       : lesson.group?.name || '',
     date: lesson.date,
     startTime: lesson.startTime,
-    endTime: lesson.endTime,
     duration: lesson.duration,
     status: lesson.status,
     recurring: !!lesson.recurringLessonId,
@@ -357,9 +262,9 @@ function minutesToTime(value: number): string {
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 }
 
-function uniqueScheduleSlots(
-  slots: CreateRecurringSchedule['slots'],
-): CreateRecurringSchedule['slots'] {
+function uniqueRecurringLessonSlots(
+  slots: CreateRecurringLesson['slots'],
+): CreateRecurringLesson['slots'] {
   const seen = new Set<string>();
   return slots.filter((slot) => {
     const key = `${slot.dayOfWeek}:${slot.date}:${slot.startTime}`;
