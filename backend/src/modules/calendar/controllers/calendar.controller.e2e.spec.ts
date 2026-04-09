@@ -155,6 +155,93 @@ describe('calendar.controller.e2e.spec.ts', () => {
     );
   });
 
+  it('should return paginated lesson history for student', async () => {
+    const teacher = await userFactory(testingModule);
+    const token = jwtService.sign({ id: teacher.id, email: teacher.email });
+    const student = await studentsRepository.save({
+      teacherId: teacher.id,
+      firstName: 'Olga',
+      status: StudentStatus.ACTIVE,
+      price: 1200,
+      duration: 60,
+    });
+
+    await lessonsRepository.save([
+      {
+        teacherId: teacher.id,
+        studentId: student.id,
+        groupId: null,
+        recurringLessonId: null,
+        startAt: new Date('2026-04-06T06:00:00.000Z'),
+        duration: 60,
+        status: LessonStatus.COMPLETED,
+      },
+      {
+        teacherId: teacher.id,
+        studentId: student.id,
+        groupId: null,
+        recurringLessonId: null,
+        startAt: new Date('2026-04-13T06:00:00.000Z'),
+        duration: 60,
+        status: LessonStatus.SCHEDULED,
+      },
+    ]);
+
+    const result = await request(httpServer)
+      .get('/calendar/lessons')
+      .query({ studentId: student.id, page: 1, limit: 10 })
+      .set('Authorization', `Bearer ${token}`)
+      .expect(HttpStatus.OK);
+
+    expect(result.body).toEqual(
+      expect.objectContaining({
+        total: 2,
+        page: 1,
+        limit: 10,
+        items: expect.arrayContaining([
+          expect.objectContaining({ entityId: student.id, status: LessonStatus.COMPLETED }),
+          expect.objectContaining({ entityId: student.id, status: LessonStatus.SCHEDULED }),
+        ]),
+      }),
+    );
+  });
+
+  it('should update lesson status', async () => {
+    const teacher = await userFactory(testingModule);
+    const token = jwtService.sign({ id: teacher.id, email: teacher.email });
+    const student = await studentsRepository.save({
+      teacherId: teacher.id,
+      firstName: 'Kate',
+      status: StudentStatus.ACTIVE,
+      price: 1500,
+      duration: 60,
+    });
+
+    const lesson = await lessonsRepository.save({
+      teacherId: teacher.id,
+      studentId: student.id,
+      groupId: null,
+      recurringLessonId: null,
+      startAt: new Date('2026-04-06T06:00:00.000Z'),
+      duration: 60,
+      status: LessonStatus.SCHEDULED,
+    });
+
+    const result = await request(httpServer)
+      .patch(`/calendar/lessons/${lesson.id}/status`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ status: LessonStatus.COMPLETED })
+      .expect(HttpStatus.OK);
+
+    expect(result.body).toEqual(
+      expect.objectContaining({
+        id: lesson.id,
+        entityId: student.id,
+        status: LessonStatus.COMPLETED,
+      }),
+    );
+  });
+
   it('should create lesson', async () => {
     const teacher = await userFactory(testingModule);
     const token = jwtService.sign({ id: teacher.id, email: teacher.email });

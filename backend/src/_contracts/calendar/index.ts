@@ -6,3 +6,4 @@ export * from './lesson-status.type';
 export * from './lesson-target-type.type';
 export * from './lesson.type';
 export * from './recurring-lesson-slot.type';
+export * from './update-lesson-status.type';

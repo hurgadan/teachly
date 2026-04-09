@@ -1,8 +1,52 @@
 <script setup lang="ts">
-const { payments, studentsWithDebt, formatPrice, monthlyIncome, totalDebt } = useMockData()
+import type { Payment } from '~/types/payments'
 
-const recentPayments = payments.slice(0, 10)
+const { getPayments } = usePaymentsApi()
+
+const payments = ref<Payment[]>([])
+const total = ref(0)
+const loading = ref(true)
 const showPaymentModal = ref(false)
+
+const currentMonthIncome = computed(() => {
+  const now = new Date()
+  const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  return payments.value
+    .filter(p => p.createdAt.startsWith(monthStr))
+    .reduce((sum, p) => sum + p.amount, 0)
+})
+
+function formatPrice(amount: number): string {
+  return amount.toLocaleString('ru-RU') + ' ₽'
+}
+
+function formatDate(dateStr: string): string {
+  return new Intl.DateTimeFormat('ru-RU', {
+    day: 'numeric', month: 'short', year: 'numeric',
+  }).format(new Date(dateStr))
+}
+
+async function loadPayments() {
+  try {
+    loading.value = true
+    const result = await getPayments({ page: 1, limit: 50 })
+    payments.value = result.items
+    total.value = result.total
+  } catch {
+    // ignore
+  } finally {
+    loading.value = false
+  }
+}
+
+function onPaymentAdded() {
+  showPaymentModal.value = false
+  void loadPayments()
+}
+
+onMounted(() => {
+  void loadPayments()
+})
 </script>
 
 <template>
@@ -19,111 +63,104 @@ const showPaymentModal = ref(false)
     </UiPageHeader>
 
     <!-- Stats -->
-    <div class="grid grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4 mb-6">
+    <div class="grid grid-cols-2 gap-3 lg:gap-4 mb-6">
       <div class="card bg-base-100 shadow-sm">
         <div class="card-body p-4">
-          <p class="text-xs text-base-content/60 uppercase tracking-wide">Получено за март</p>
-          <p class="text-2xl font-bold mt-1 text-success">{{ formatPrice(monthlyIncome) }}</p>
+          <p class="text-xs text-base-content/60 uppercase tracking-wide">Получено за текущий месяц</p>
+          <p class="text-2xl font-bold mt-1 text-success">
+            <span v-if="loading" class="loading loading-spinner loading-sm" />
+            <span v-else>{{ formatPrice(currentMonthIncome) }}</span>
+          </p>
         </div>
       </div>
       <div class="card bg-base-100 shadow-sm">
         <div class="card-body p-4">
-          <p class="text-xs text-base-content/60 uppercase tracking-wide">Общая задолженность</p>
-          <p class="text-2xl font-bold mt-1 text-error">{{ formatPrice(totalDebt) }}</p>
-        </div>
-      </div>
-      <div class="card bg-base-100 shadow-sm col-span-2 lg:col-span-1">
-        <div class="card-body p-4">
-          <p class="text-xs text-base-content/60 uppercase tracking-wide">Учеников с долгом</p>
-          <p class="text-2xl font-bold mt-1">{{ studentsWithDebt.length }}</p>
+          <p class="text-xs text-base-content/60 uppercase tracking-wide">Всего оплат</p>
+          <p class="text-2xl font-bold mt-1">
+            <span v-if="loading" class="loading loading-spinner loading-sm" />
+            <span v-else>{{ total }}</span>
+          </p>
         </div>
       </div>
     </div>
 
-    <div class="grid lg:grid-cols-3 gap-4 lg:gap-6">
-      <!-- Payment history -->
-      <div class="lg:col-span-2">
-        <h2 class="font-semibold mb-3">История оплат</h2>
+    <!-- Payment history -->
+    <h2 class="font-semibold mb-3">История оплат</h2>
 
-        <!-- Desktop table -->
-        <div class="hidden lg:block card bg-base-100 shadow-sm">
-          <div class="overflow-x-auto">
-            <table class="table table-sm">
-              <thead>
-                <tr>
-                  <th>Дата</th>
-                  <th>Ученик</th>
-                  <th>Сумма</th>
-                  <th>Способ</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="payment in recentPayments" :key="payment.id">
-                  <td class="text-base-content/70">{{ payment.date }}</td>
-                  <td>
-                    <NuxtLink :to="`/students/${payment.studentId}`" class="hover:text-primary transition-colors">
-                      {{ payment.studentName }}
-                    </NuxtLink>
-                  </td>
-                  <td class="font-medium text-success">+{{ formatPrice(payment.amount) }}</td>
-                  <td>
-                    <span class="badge badge-sm badge-ghost">{{ payment.method }}</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+    <div v-if="loading" class="flex justify-center py-12">
+      <span class="loading loading-spinner loading-lg" />
+    </div>
 
-        <!-- Mobile cards -->
-        <div class="lg:hidden space-y-2">
-          <div
-            v-for="payment in recentPayments"
-            :key="payment.id"
-            class="card bg-base-100 shadow-sm"
-          >
-            <div class="card-body p-3 flex-row items-center gap-3">
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium">{{ payment.studentName }}</p>
-                <p class="text-xs text-base-content/50">{{ payment.date }} · {{ payment.method }}</p>
-              </div>
-              <span class="text-sm font-medium text-success shrink-0">+{{ formatPrice(payment.amount) }}</span>
-            </div>
-          </div>
+    <div v-else-if="payments.length === 0" class="card bg-base-100 shadow-sm">
+      <div class="card-body text-center py-12 text-base-content/50">
+        Оплат ещё нет
+      </div>
+    </div>
+
+    <template v-else>
+      <!-- Desktop table -->
+      <div class="hidden lg:block card bg-base-100 shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Дата</th>
+                <th>Ученик / Группа</th>
+                <th>Комментарий</th>
+                <th>Сумма</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="payment in payments" :key="payment.id">
+                <td class="text-base-content/70">{{ formatDate(payment.createdAt) }}</td>
+                <td>
+                  <NuxtLink
+                    v-if="payment.studentId"
+                    :to="`/students/${payment.studentId}`"
+                    class="hover:text-primary transition-colors"
+                  >
+                    Ученик
+                  </NuxtLink>
+                  <span v-else-if="payment.groupId">Группа</span>
+                  <span v-else class="text-base-content/40">—</span>
+                </td>
+                <td class="text-base-content/60">{{ payment.comment || '—' }}</td>
+                <td class="font-medium text-success">+{{ formatPrice(payment.amount) }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
-      <!-- Debt summary -->
-      <div>
-        <h2 class="font-semibold mb-3">Задолженности</h2>
-        <div class="card bg-base-100 shadow-sm">
-          <div class="card-body p-4 lg:p-6">
-            <div v-if="studentsWithDebt.length === 0" class="text-sm text-base-content/50 text-center py-4">
-              Нет задолженностей
-            </div>
-            <div v-else class="divide-y divide-base-200">
+      <!-- Mobile cards -->
+      <div class="lg:hidden space-y-2">
+        <div
+          v-for="payment in payments"
+          :key="payment.id"
+          class="card bg-base-100 shadow-sm"
+        >
+          <div class="card-body p-3 flex-row items-center gap-3">
+            <div class="flex-1 min-w-0">
               <NuxtLink
-                v-for="student in studentsWithDebt"
-                :key="student.id"
-                :to="`/students/${student.id}`"
-                class="flex items-center justify-between py-3 hover:bg-base-200 -mx-2 px-2 rounded transition-colors"
+                v-if="payment.studentId"
+                :to="`/students/${payment.studentId}`"
+                class="text-sm font-medium hover:text-primary"
               >
-                <div class="flex items-center gap-3">
-                  <div class="avatar placeholder">
-                    <div class="bg-neutral text-neutral-content w-8 rounded-full">
-                      <span class="text-xs">{{ student.firstName[0] }}{{ student.lastName[0] }}</span>
-                    </div>
-                  </div>
-                  <span class="text-sm">{{ student.firstName }} {{ student.lastName }}</span>
-                </div>
-                <span class="text-sm font-medium text-error">{{ formatPrice(student.debt) }}</span>
+                Ученик
               </NuxtLink>
+              <p v-else class="text-sm font-medium">Группа</p>
+              <p class="text-xs text-base-content/50">{{ formatDate(payment.createdAt) }}{{ payment.comment ? ` · ${payment.comment}` : '' }}</p>
             </div>
+            <span class="text-sm font-medium text-success shrink-0">+{{ formatPrice(payment.amount) }}</span>
           </div>
         </div>
       </div>
-    </div>
+    </template>
 
-    <ModalsAddPaymentModal :open="showPaymentModal" @close="showPaymentModal = false" @added="showPaymentModal = false" />
+    <ModalsAddPaymentModal
+      :open="showPaymentModal"
+      @close="showPaymentModal = false"
+      @added="onPaymentAdded"
+    />
   </div>
 </template>

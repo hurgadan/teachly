@@ -5,7 +5,9 @@ import type {
   CreateLesson,
   CreateRecurringLesson,
   Lesson,
-} from '~/types/calendar'
+  PaginatedResponse,
+  UpdateLessonStatus,
+} from '@hurgadan/teachly-contracts'
 
 type ApiRequest = ReturnType<typeof useApi>['api']
 
@@ -20,11 +22,7 @@ class CalendarHttpApi extends CalendarApi {
   }
 
   protected getAvailableSlots(startDate: string, duration: number): Promise<AvailableSlot[]> {
-    const query = new URLSearchParams({
-      startDate,
-      duration: String(duration),
-    })
-
+    const query = new URLSearchParams({ startDate, duration: String(duration) })
     return this.request<AvailableSlot[]>(`${this.baseUrl}/available-slots?${query.toString()}`)
   }
 
@@ -38,6 +36,28 @@ class CalendarHttpApi extends CalendarApi {
   protected createLesson(data: CreateLesson): Promise<Lesson> {
     return this.request<Lesson>(`${this.baseUrl}/lessons`, {
       method: 'POST',
+      body: data,
+    })
+  }
+
+  protected getLessons(params: {
+    studentId?: string
+    groupId?: string
+    page?: number
+    limit?: number
+  }): Promise<PaginatedResponse<Lesson>> {
+    const query = new URLSearchParams()
+    if (params.studentId) query.set('studentId', params.studentId)
+    if (params.groupId) query.set('groupId', params.groupId)
+    if (params.page) query.set('page', String(params.page))
+    if (params.limit) query.set('limit', String(params.limit))
+    const qs = query.toString()
+    return this.request<PaginatedResponse<Lesson>>(`${this.baseUrl}/lessons${qs ? `?${qs}` : ''}`)
+  }
+
+  protected updateLessonStatus(id: string, data: UpdateLessonStatus): Promise<Lesson> {
+    return this.request<Lesson>(`${this.baseUrl}/lessons/${id}/status`, {
+      method: 'PATCH',
       body: data,
     })
   }
@@ -57,6 +77,14 @@ class CalendarHttpApi extends CalendarApi {
   public createSingleLesson(data: CreateLesson) {
     return this.createLesson(data)
   }
+
+  public fetchLessons(params: Parameters<CalendarHttpApi['getLessons']>[0]) {
+    return this.getLessons(params)
+  }
+
+  public patchLessonStatus(id: string, data: UpdateLessonStatus) {
+    return this.updateLessonStatus(id, data)
+  }
 }
 
 export function useCalendarApi() {
@@ -68,5 +96,7 @@ export function useCalendarApi() {
     createRecurringLesson: (payload: CreateRecurringLesson) => calendarApi.saveRecurringLesson(payload),
     getAvailableSlots: (startDate: string, duration: number) => calendarApi.getWeekAvailableSlots(startDate, duration),
     getWeekLessons: (startDate?: string) => calendarApi.getWeekLessons(startDate),
+    getLessons: (params: Parameters<CalendarHttpApi['fetchLessons']>[0]) => calendarApi.fetchLessons(params),
+    updateLessonStatus: (id: string, data: UpdateLessonStatus) => calendarApi.patchLessonStatus(id, data),
   }
 }

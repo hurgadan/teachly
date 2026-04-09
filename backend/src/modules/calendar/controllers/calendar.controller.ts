@@ -4,6 +4,8 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
+  Patch,
   Post,
   Query,
   Request,
@@ -19,6 +21,9 @@ import { AvailableSlotsQueryDto } from '../dto/available-slots-query.dto';
 import { CreateLessonDto } from '../dto/create-lesson.dto';
 import { CreateRecurringLessonDto } from '../dto/create-recurring-lesson.dto';
 import { LessonDto } from '../dto/lesson.dto';
+import { LessonsQueryDto } from '../dto/lessons-query.dto';
+import { PaginatedLessonsDto } from '../dto/paginated-lessons.dto';
+import { UpdateLessonStatusDto } from '../dto/update-lesson-status.dto';
 import { CalendarService } from '../services/calendar.service';
 
 @ApiTags('Calendar')
@@ -54,6 +59,26 @@ export class CalendarController {
     return slots.map((slot) => transformToDto(AvailableSlotDto, slot));
   }
 
+  @Get('lessons')
+  @ApiOperation({ summary: 'Get lesson history (paginated)' })
+  @ApiOkResponse({ type: PaginatedLessonsDto })
+  public async getLessons(
+    @Request() req: RequestExtended,
+    @Query() query: LessonsQueryDto,
+  ): Promise<PaginatedLessonsDto> {
+    const result = await this.calendarService.getLessons(
+      req.user!.id,
+      { studentId: query.studentId, groupId: query.groupId },
+      query.page,
+      query.limit,
+    );
+
+    return transformToDto(PaginatedLessonsDto, {
+      ...result,
+      items: result.items.map((item) => transformToDto(LessonDto, item)),
+    });
+  }
+
   @Post('recurring-lessons')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create recurring lesson' })
@@ -75,6 +100,18 @@ export class CalendarController {
     @Body() data: CreateLessonDto,
   ): Promise<LessonDto> {
     const lesson = await this.calendarService.createLesson(req.user!.id, data);
+    return transformToDto(LessonDto, lesson);
+  }
+
+  @Patch('lessons/:id/status')
+  @ApiOperation({ summary: 'Update lesson status' })
+  @ApiOkResponse({ type: LessonDto })
+  public async updateLessonStatus(
+    @Request() req: RequestExtended,
+    @Param('id') id: string,
+    @Body() data: UpdateLessonStatusDto,
+  ): Promise<LessonDto> {
+    const lesson = await this.calendarService.updateLessonStatus(req.user!.id, id, data);
     return transformToDto(LessonDto, lesson);
   }
 }

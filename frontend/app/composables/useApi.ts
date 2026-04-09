@@ -1,5 +1,5 @@
 interface ApiOptions {
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   body?: BodyInit | Record<string, any> | null
 }
 

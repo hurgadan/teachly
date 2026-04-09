@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import type { Student, StudentStatus } from '~/types/students'
+import type { Lesson } from '~/types/calendar'
+import type { Payment } from '~/types/payments'
+import type { StudentBalance } from '@hurgadan/teachly-contracts'
+import { LessonStatus } from '@hurgadan/teachly-contracts'
 
 const route = useRoute()
-const { getStudent, updateStudent } = useStudentsApi()
+const { getStudent, updateStudent, getStudentBalance } = useStudentsApi()
+const { getLessons, updateLessonStatus } = useCalendarApi()
+const { getPayments } = usePaymentsApi()
 const { show: showToast } = useToast()
 
 const studentId = computed(() => String(route.params.id))
@@ -11,6 +17,17 @@ const loading = ref(true)
 const saving = ref(false)
 
 const activeTab = ref('profile')
+
+// Lessons tab
+const lessons = ref<Lesson[]>([])
+const lessonsTotal = ref(0)
+const lessonsLoading = ref(false)
+
+// Payments tab
+const payments = ref<Payment[]>([])
+const paymentsTotal = ref(0)
+const balance = ref<StudentBalance | null>(null)
+const paymentsLoading = ref(false)
 
 const statusOptions = [
   { value: 'active', label: 'Активный' },
@@ -39,6 +56,33 @@ function formatPrice(amount: number): string {
   return amount.toLocaleString('ru-RU') + ' ₽'
 }
 
+function formatDate(dateStr: string): string {
+  return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })
+    .format(new Date(dateStr))
+}
+
+const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+
+function getLocalTimeStr(startAt: string): string {
+  return new Intl.DateTimeFormat('ru-RU', {
+    day: 'numeric', month: 'short',
+    hour: '2-digit', minute: '2-digit',
+    timeZone: userTimezone,
+    hour12: false,
+  }).format(new Date(startAt))
+}
+
+const lessonStatusLabel: Record<string, string> = {
+  completed: 'Проведено',
+  scheduled: 'Запланировано',
+  cancelled: 'Отменено',
+}
+const lessonStatusClass: Record<string, string> = {
+  completed: 'badge-success',
+  scheduled: 'badge-info',
+  cancelled: 'badge-error',
+}
+
 async function loadStudent() {
   try {
     loading.value = true
@@ -60,6 +104,46 @@ async function loadStudent() {
     student.value = null
   } finally {
     loading.value = false
+  }
+}
+
+async function loadLessons() {
+  try {
+    lessonsLoading.value = true
+    const result = await getLessons({ studentId: studentId.value, page: 1, limit: 50 })
+    lessons.value = result.items
+    lessonsTotal.value = result.total
+  } catch {
+    // ignore
+  } finally {
+    lessonsLoading.value = false
+  }
+}
+
+async function loadPaymentsTab() {
+  try {
+    paymentsLoading.value = true
+    const [paymentsResult, balanceResult] = await Promise.all([
+      getPayments({ studentId: studentId.value, page: 1, limit: 50 }),
+      getStudentBalance(studentId.value),
+    ])
+    payments.value = paymentsResult.items
+    paymentsTotal.value = paymentsResult.total
+    balance.value = balanceResult
+  } catch {
+    // ignore
+  } finally {
+    paymentsLoading.value = false
+  }
+}
+
+async function handleMarkCompleted(lessonId: string) {
+  try {
+    await updateLessonStatus(lessonId, { status: LessonStatus.COMPLETED })
+    await loadLessons()
+    showToast('Занятие отмечено как проведённое')
+  } catch {
+    showToast('Ошибка при обновлении статуса')
   }
 }
 
@@ -85,6 +169,15 @@ async function handleSaveProfile() {
     saving.value = false
   }
 }
+
+watch(activeTab, (tab) => {
+  if (tab === 'lessons' && lessons.value.length === 0 && !lessonsLoading.value) {
+    void loadLessons()
+  }
+  if (tab === 'payments' && payments.value.length === 0 && !paymentsLoading.value) {
+    void loadPaymentsTab()
+  }
+})
 
 onMounted(async () => {
   await loadStudent()
@@ -113,25 +206,13 @@ onMounted(async () => {
 
     <!-- Tabs -->
     <div role="tablist" class="tabs tabs-bordered mb-6">
-      <button
-        role="tab"
-        :class="['tab', { 'tab-active': activeTab === 'profile' }]"
-        @click="activeTab = 'profile'"
-      >
+      <button role="tab" :class="['tab', { 'tab-active': activeTab === 'profile' }]" @click="activeTab = 'profile'">
         Профиль
       </button>
-      <button
-        role="tab"
-        :class="['tab', { 'tab-active': activeTab === 'lessons' }]"
-        @click="activeTab = 'lessons'"
-      >
+      <button role="tab" :class="['tab', { 'tab-active': activeTab === 'lessons' }]" @click="activeTab = 'lessons'">
         Занятия
       </button>
-      <button
-        role="tab"
-        :class="['tab', { 'tab-active': activeTab === 'payments' }]"
-        @click="activeTab = 'payments'"
-      >
+      <button role="tab" :class="['tab', { 'tab-active': activeTab === 'payments' }]" @click="activeTab = 'payments'">
         Оплаты
       </button>
     </div>
@@ -178,11 +259,7 @@ onMounted(async () => {
               <fieldset class="fieldset">
                 <legend class="fieldset-legend">Статус</legend>
                 <select v-model="form.status" class="select select-bordered w-full">
-                  <option
-                    v-for="opt in statusOptions"
-                    :key="opt.value"
-                    :value="opt.value"
-                  >
+                  <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">
                     {{ opt.label }}
                   </option>
                 </select>
@@ -195,13 +272,7 @@ onMounted(async () => {
                 <fieldset class="fieldset">
                   <legend class="fieldset-legend">Длительность</legend>
                   <select v-model.number="form.duration" class="select select-bordered w-full">
-                    <option
-                      v-for="d in durationOptions"
-                      :key="d"
-                      :value="d"
-                    >
-                      {{ d }} мин
-                    </option>
+                    <option v-for="d in durationOptions" :key="d" :value="d">{{ d }} мин</option>
                   </select>
                 </fieldset>
               </div>
@@ -220,19 +291,8 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- Debt summary -->
-        <div v-if="student.debt > 0" class="card bg-error/5 border border-error/20">
-          <div class="card-body p-4 flex-row items-center justify-between">
-            <div>
-              <p class="text-sm font-medium text-error">Задолженность</p>
-              <p class="text-xs text-base-content/50">Начисления минус оплаты</p>
-            </div>
-            <p class="text-xl font-bold text-error">{{ formatPrice(student.debt) }}</p>
-          </div>
-        </div>
-
         <div class="flex justify-end gap-2">
-          <button class="btn btn-ghost btn-sm">Отмена</button>
+          <button class="btn btn-ghost btn-sm" @click="void loadStudent()">Отмена</button>
           <button class="btn btn-primary btn-sm" :disabled="saving" @click="handleSaveProfile()">
             <span v-if="saving" class="loading loading-spinner loading-sm" />
             Сохранить
@@ -243,10 +303,38 @@ onMounted(async () => {
 
     <!-- Lessons tab -->
     <div v-if="activeTab === 'lessons'">
-      <div class="card bg-base-100 shadow-sm">
+      <div v-if="lessonsLoading" class="flex justify-center py-12">
+        <span class="loading loading-spinner loading-lg" />
+      </div>
+      <div v-else-if="lessons.length === 0" class="card bg-base-100 shadow-sm">
+        <div class="card-body text-center py-12 text-base-content/50">
+          Занятий пока нет
+        </div>
+      </div>
+      <div v-else class="card bg-base-100 shadow-sm">
         <div class="card-body p-4 lg:p-6">
-          <div class="text-sm text-base-content/50 text-center py-8">
-            История занятий появится на этапе 8
+          <h3 class="font-semibold mb-4">История занятий ({{ lessonsTotal }})</h3>
+          <div class="divide-y divide-base-200">
+            <div
+              v-for="lesson in lessons"
+              :key="lesson.id"
+              class="flex items-center gap-3 py-3"
+            >
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium">{{ getLocalTimeStr(lesson.startAt) }}</p>
+                <p class="text-xs text-base-content/50">{{ lesson.duration }} мин</p>
+              </div>
+              <span :class="['badge badge-sm', lessonStatusClass[lesson.status]]">
+                {{ lessonStatusLabel[lesson.status] }}
+              </span>
+              <button
+                v-if="lesson.status === 'scheduled'"
+                class="btn btn-xs btn-ghost"
+                @click="handleMarkCompleted(lesson.id)"
+              >
+                ✓
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -254,17 +342,56 @@ onMounted(async () => {
 
     <!-- Payments tab -->
     <div v-if="activeTab === 'payments'">
-      <div class="card bg-base-100 shadow-sm">
-        <div class="card-body p-4 lg:p-6">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="font-semibold">История оплат</h3>
-            <button class="btn btn-primary btn-sm" @click="showPaymentModal = true">Добавить оплату</button>
+      <div v-if="paymentsLoading" class="flex justify-center py-12">
+        <span class="loading loading-spinner loading-lg" />
+      </div>
+      <template v-else>
+        <!-- Balance card -->
+        <div v-if="balance" class="grid grid-cols-3 gap-3 mb-4">
+          <div class="card bg-base-100 shadow-sm">
+            <div class="card-body p-4">
+              <p class="text-xs text-base-content/60 uppercase tracking-wide">Оплачено</p>
+              <p class="text-xl font-bold mt-1 text-success">{{ formatPrice(balance.totalPaid) }}</p>
+            </div>
           </div>
-          <div class="text-sm text-base-content/50 text-center py-8">
-            История оплат появится на этапе 8
+          <div class="card bg-base-100 shadow-sm">
+            <div class="card-body p-4">
+              <p class="text-xs text-base-content/60 uppercase tracking-wide">Начислено</p>
+              <p class="text-xl font-bold mt-1">{{ formatPrice(balance.totalCharged) }}</p>
+            </div>
+          </div>
+          <div class="card shadow-sm" :class="balance.balance < 0 ? 'bg-error/5 border border-error/20' : 'bg-success/5 border border-success/20'">
+            <div class="card-body p-4">
+              <p class="text-xs text-base-content/60 uppercase tracking-wide">Баланс</p>
+              <p class="text-xl font-bold mt-1" :class="balance.balance < 0 ? 'text-error' : 'text-success'">
+                {{ formatPrice(balance.balance) }}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+
+        <!-- Payments list -->
+        <div class="card bg-base-100 shadow-sm">
+          <div class="card-body p-4 lg:p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-semibold">История оплат ({{ paymentsTotal }})</h3>
+              <button class="btn btn-primary btn-sm" @click="showPaymentModal = true">+ Оплата</button>
+            </div>
+            <div v-if="payments.length === 0" class="text-sm text-base-content/50 text-center py-8">
+              Оплат ещё нет
+            </div>
+            <div v-else class="divide-y divide-base-200">
+              <div v-for="payment in payments" :key="payment.id" class="flex items-center justify-between py-3">
+                <div>
+                  <p class="text-sm">{{ formatDate(payment.createdAt) }}</p>
+                  <p v-if="payment.comment" class="text-xs text-base-content/50">{{ payment.comment }}</p>
+                </div>
+                <span class="text-sm font-medium text-success">+{{ formatPrice(payment.amount) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
     </div>
 
     <ModalsScheduleModal
@@ -280,7 +407,7 @@ onMounted(async () => {
       :open="showPaymentModal"
       :student-id="student.id"
       @close="showPaymentModal = false"
-      @added="showPaymentModal = false"
+      @added="showPaymentModal = false; void loadPaymentsTab()"
     />
   </div>
 
