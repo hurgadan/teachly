@@ -4,5 +4,5 @@ services:
       - /var/lib/postgresql/data:size=256m
 
   backend-api:
-    command: npm run ci:test:e2e
+    command: npm run test:e2e
 

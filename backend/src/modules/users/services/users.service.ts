@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as bcrypt from 'bcrypt';
 
 import { PASSWORD_SALT } from '../constants';
@@ -7,6 +8,7 @@ import { WorkScheduleEntity } from '../dao/work-schedule.entity';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateProfileDto } from '../dto/update-profile.dto';
 import { UpdateWorkScheduleDto } from '../dto/update-work-schedule.dto';
+import { UserTimezoneChangedEvent } from '../events/user-timezone-changed.event';
 import { UsersRepository } from '../repositories/users.repository';
 import { WorkScheduleRepository } from '../repositories/work-schedule.repository';
 
@@ -15,6 +17,7 @@ export class UsersService {
   constructor(
     private readonly usersRepository: UsersRepository,
     private readonly workScheduleRepository: WorkScheduleRepository,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async findOneByEmail(email: string): Promise<UserEntity | null> {
@@ -43,6 +46,13 @@ export class UsersService {
     }
 
     await this.usersRepository.update(userId, data);
+
+    if (data.timezone && data.timezone !== user.timezone) {
+      await this.eventEmitter.emitAsync(
+        UserTimezoneChangedEvent.EVENT_NAME,
+        new UserTimezoneChangedEvent(userId, user.timezone, data.timezone),
+      );
+    }
 
     return this.getProfile(userId);
   }

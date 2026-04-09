@@ -13,37 +13,36 @@ export class LessonsRepository {
 
   public async findInDateRange(
     teacherId: string,
-    startDate: string,
-    endDate: string,
+    startAt: Date,
+    endAt: Date,
   ): Promise<LessonEntity[]> {
     return this.repository.find({
       where: {
         teacherId,
-        date: Between(startDate, endDate),
+        startAt: Between(startAt, endAt),
       },
       relations: {
         student: true,
         group: true,
       },
       order: {
-        date: 'ASC',
-        startTime: 'ASC',
+        startAt: 'ASC',
       },
     });
   }
 
-  public async findByRecurringLessonsAndDates(
+  public async findByRecurringLessonsAndStartAts(
     recurringLessonIds: string[],
-    dates: string[],
+    startAts: Date[],
   ): Promise<LessonEntity[]> {
-    if (!recurringLessonIds.length || !dates.length) {
+    if (!recurringLessonIds.length || !startAts.length) {
       return [];
     }
 
     return this.repository.find({
       where: {
         recurringLessonId: In(recurringLessonIds),
-        date: In(dates),
+        startAt: In(startAts),
       },
     });
   }

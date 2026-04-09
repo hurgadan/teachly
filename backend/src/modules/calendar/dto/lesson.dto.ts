@@ -22,11 +22,7 @@ export class LessonDto implements Lesson {
 
   @ApiProperty()
   @Expose()
-  public date: string;
-
-  @ApiProperty()
-  @Expose()
-  public startTime: string;
+  public startAt: string;
 
   @ApiProperty()
   @Expose()

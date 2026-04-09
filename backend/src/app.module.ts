@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 
 import pinoLogger from './_common/app/app-modules/pino-logger';
@@ -18,6 +19,7 @@ import { UsersModule } from './modules/users/users.module';
       load: [config],
     }),
     ScheduleModule.forRoot(),
+    EventEmitterModule.forRoot(),
     pinoLogger,
     typeOrm,
     AuthModule,
