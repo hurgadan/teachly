@@ -1,6 +1,11 @@
 import { StudentsApi } from '@hurgadan/teachly-contracts'
 
-import type { CreateStudentPayload, Student, UpdateStudentPayload } from '~/types/students'
+import type {
+  CreateStudentPayload,
+  Student,
+  UpdateStudentPayload,
+} from '~/types/students'
+import type { StudentBalance } from '@hurgadan/teachly-contracts'
 
 type ApiRequest = ReturnType<typeof useApi>['api']
 
@@ -32,6 +37,10 @@ class StudentsHttpApi extends StudentsApi {
     })
   }
 
+  protected getStudentBalance(id: string): Promise<StudentBalance> {
+    return this.request<StudentBalance>(`${this.baseUrl}/${id}/balance`)
+  }
+
   public listStudents(search?: string) {
     return this.getStudents(search)
   }
@@ -47,6 +56,10 @@ class StudentsHttpApi extends StudentsApi {
   public updateStudentEntry(id: string, data: UpdateStudentPayload) {
     return this.updateStudent(id, data)
   }
+
+  public fetchStudentBalance(id: string) {
+    return this.getStudentBalance(id)
+  }
 }
 
 export function useStudentsApi() {
@@ -56,6 +69,7 @@ export function useStudentsApi() {
   return {
     createStudent: (payload: CreateStudentPayload) => studentsApi.createStudentEntry(payload),
     getStudent: (id: string) => studentsApi.getStudentById(id),
+    getStudentBalance: (id: string) => studentsApi.fetchStudentBalance(id),
     listStudents: (search?: string) => studentsApi.listStudents(search),
     updateStudent: (id: string, payload: UpdateStudentPayload) => studentsApi.updateStudentEntry(id, payload),
   }

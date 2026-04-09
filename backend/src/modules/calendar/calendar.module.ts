@@ -28,6 +28,6 @@ import { LessonsMaterializerService } from './services/lessons-materializer.serv
     LessonsMaterializerService,
     UserTimezoneChangedListener,
   ],
-  exports: [CalendarService],
+  exports: [CalendarService, LessonsRepository],
 })
 export class CalendarModule {}

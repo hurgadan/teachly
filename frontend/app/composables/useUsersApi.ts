@@ -5,6 +5,7 @@ import type {
   TeacherProfile,
   UpdateProfile,
   UpdateWorkSchedule,
+  User,
   WorkSchedule,
 } from '@hurgadan/teachly-contracts'
 
@@ -15,8 +16,8 @@ class UsersHttpApi extends UsersApi {
     super()
   }
 
-  protected createUser(data: CreateUser) {
-    return this.request(`${this.baseUrl}`, {
+  protected createUser(data: CreateUser): Promise<User> {
+    return this.request<User>(`${this.baseUrl}`, {
       method: 'POST',
       body: data,
     })

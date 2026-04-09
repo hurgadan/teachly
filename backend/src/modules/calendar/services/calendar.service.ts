@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 
 import { LessonsMaterializerService } from './lessons-materializer.service';
 import { localToUtc, utcToLocal } from '../../../_common/utils/timezone';
+import { PaginatedResponse } from '../../../_contracts';
 import {
   AvailableSlot,
   CreateLesson,
@@ -9,6 +10,7 @@ import {
   Lesson,
   LessonStatus,
   LessonTargetType,
+  UpdateLessonStatus,
 } from '../../../_contracts/calendar';
 import { GroupsService } from '../../groups/services/groups.service';
 import { StudentsService } from '../../students/services/students.service';
@@ -192,6 +194,47 @@ export class CalendarService {
     );
 
     return mapEntityToLesson(createdLesson);
+  }
+
+  public async getLessons(
+    teacherId: string,
+    filter: { studentId?: string; groupId?: string },
+    page: number,
+    limit: number,
+  ): Promise<PaginatedResponse<Lesson>> {
+    const { items, total } = await this.lessonsRepository.findPaginated(
+      teacherId,
+      filter,
+      page,
+      limit,
+    );
+
+    return {
+      items: items.map(mapEntityToLesson),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  public async updateLessonStatus(
+    teacherId: string,
+    lessonId: string,
+    data: UpdateLessonStatus,
+  ): Promise<Lesson> {
+    const lesson = await this.lessonsRepository.updateStatus(lessonId, teacherId, data.status);
+
+    if (!lesson) {
+      throw new BadRequestException('Lesson not found');
+    }
+
+    const [lessonWithRelations] = await this.lessonsRepository.findInDateRange(
+      teacherId,
+      lesson.startAt,
+      lesson.startAt,
+    );
+
+    return mapEntityToLesson(lessonWithRelations);
   }
 
   public async recalculateTimezone(

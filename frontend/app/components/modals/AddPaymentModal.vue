@@ -1,35 +1,54 @@
 <script setup lang="ts">
-const props = defineProps<{ open: boolean; studentId?: number }>()
+import type { Student } from '~/types/students'
+
+const props = defineProps<{ open: boolean; studentId?: string }>()
 const emit = defineEmits<{ close: []; added: [] }>()
 
-const { students } = useMockData()
+const { listStudents } = useStudentsApi()
+const { createPayment } = usePaymentsApi()
 const { show } = useToast()
 
-const activeStudents = students.filter(s => s.status !== 'archived')
+const students = ref<Student[]>([])
+
+onMounted(async () => {
+  students.value = await listStudents()
+})
+
+const activeStudents = computed(() => students.value.filter(s => s.status !== 'archived'))
 
 const form = reactive({
-  studentId: props.studentId || 0,
+  studentId: props.studentId || '',
   amount: 0,
-  method: 'Перевод',
-  date: new Date().toISOString().split('T')[0],
+  comment: '',
 })
 
 watch(() => props.studentId, (val) => {
   if (val) form.studentId = val
 })
 
-const methods = ['Перевод', 'Наличные', 'Карта']
 const loading = ref(false)
 
 async function handleSubmit() {
-  loading.value = true
-  await new Promise(r => setTimeout(r, 600))
-  loading.value = false
-  const student = students.find(s => s.id === form.studentId)
-  show(`Оплата ${form.amount.toLocaleString('ru-RU')} ₽ от ${student?.firstName || 'ученика'} добавлена`)
-  emit('added')
-  emit('close')
-  form.amount = 0
+  if (!form.studentId || !form.amount) return
+
+  try {
+    loading.value = true
+    await createPayment({
+      studentId: form.studentId,
+      amount: form.amount,
+      comment: form.comment || null,
+    })
+    const student = students.value.find(s => s.id === form.studentId)
+    show(`Оплата ${form.amount.toLocaleString('ru-RU')} ₽ от ${student?.firstName || 'ученика'} добавлена`)
+    emit('added')
+    emit('close')
+    form.amount = 0
+    form.comment = ''
+  } catch {
+    show('Ошибка при добавлении оплаты')
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
@@ -40,8 +59,8 @@ async function handleSubmit() {
       <form @submit.prevent="handleSubmit" class="grid gap-4">
         <fieldset v-if="!studentId" class="fieldset">
           <legend class="fieldset-legend">Ученик *</legend>
-          <select v-model.number="form.studentId" class="select select-bordered w-full" required>
-            <option :value="0" disabled>Выберите ученика</option>
+          <select v-model="form.studentId" class="select select-bordered w-full" required>
+            <option value="" disabled>Выберите ученика</option>
             <option v-for="s in activeStudents" :key="s.id" :value="s.id">
               {{ s.firstName }} {{ s.lastName }}
             </option>
@@ -52,14 +71,8 @@ async function handleSubmit() {
           <input v-model.number="form.amount" type="number" class="input input-bordered w-full" min="1" step="100" required />
         </fieldset>
         <fieldset class="fieldset">
-          <legend class="fieldset-legend">Способ оплаты</legend>
-          <select v-model="form.method" class="select select-bordered w-full">
-            <option v-for="m in methods" :key="m">{{ m }}</option>
-          </select>
-        </fieldset>
-        <fieldset class="fieldset">
-          <legend class="fieldset-legend">Дата</legend>
-          <input v-model="form.date" type="date" class="input input-bordered w-full" />
+          <legend class="fieldset-legend">Комментарий</legend>
+          <input v-model="form.comment" type="text" class="input input-bordered w-full" placeholder="Необязательно" />
         </fieldset>
         <div class="modal-action">
           <button type="button" class="btn btn-ghost" @click="emit('close')">Отмена</button>

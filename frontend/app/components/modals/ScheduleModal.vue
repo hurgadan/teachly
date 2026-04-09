@@ -196,8 +196,8 @@ function buildWeekDays(startDate: string) {
 }
 
 function timeToMinutes(value: string) {
-  const [hours, minutes] = value.split(':').map(Number)
-  return hours * 60 + minutes
+  const parts = value.split(':').map(Number)
+  return (parts[0] ?? 0) * 60 + (parts[1] ?? 0)
 }
 
 function minutesToTime(value: number) {

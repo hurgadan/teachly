@@ -20,6 +20,8 @@ describe('CalendarService', () => {
     createOne: jest.fn(),
     findByRecurringLessonsAndStartAts: jest.fn(),
     findInDateRange: jest.fn(),
+    findPaginated: jest.fn(),
+    updateStatus: jest.fn(),
   };
 
   const mockRecurringLessonsRepository = {
@@ -66,6 +68,48 @@ describe('CalendarService', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('should return paginated lessons for student', async () => {
+    const startAt = new Date('2026-04-06T06:00:00.000Z');
+
+    mockLessonsRepository.findPaginated.mockResolvedValue({
+      items: [
+        {
+          id: 'lesson-1',
+          studentId: 'student-1',
+          groupId: null,
+          recurringLessonId: null,
+          startAt,
+          duration: 60,
+          status: LessonStatus.COMPLETED,
+          student: { firstName: 'Anna', lastName: 'Petrova' },
+          group: null,
+        },
+      ],
+      total: 1,
+    });
+
+    const result = await service.getLessons('teacher-1', { studentId: 'student-1' }, 1, 20);
+
+    expect(result).toEqual({
+      items: [
+        expect.objectContaining({
+          id: 'lesson-1',
+          status: LessonStatus.COMPLETED,
+          type: LessonTargetType.STUDENT,
+        }),
+      ],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    expect(mockLessonsRepository.findPaginated).toHaveBeenCalledWith(
+      'teacher-1',
+      { studentId: 'student-1' },
+      1,
+      20,
+    );
   });
 
   it('should calculate available slots with teacher buffer', async () => {
@@ -117,6 +161,57 @@ describe('CalendarService', () => {
         date: '2026-04-06',
         startTime: '10:00',
         duration: 60,
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('should update lesson status', async () => {
+    const startAt = new Date('2026-04-06T06:00:00.000Z');
+
+    mockLessonsRepository.updateStatus.mockResolvedValue({
+      id: 'lesson-1',
+      startAt,
+      status: LessonStatus.COMPLETED,
+    });
+    mockLessonsRepository.findInDateRange.mockResolvedValue([
+      {
+        id: 'lesson-1',
+        studentId: 'student-1',
+        groupId: null,
+        recurringLessonId: null,
+        startAt,
+        duration: 60,
+        status: LessonStatus.COMPLETED,
+        student: { firstName: 'Anna', lastName: null },
+        group: null,
+      },
+    ]);
+
+    const result = await service.updateLessonStatus('teacher-1', 'lesson-1', {
+      status: LessonStatus.COMPLETED,
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        id: 'lesson-1',
+        status: LessonStatus.COMPLETED,
+        type: LessonTargetType.STUDENT,
+        entityId: 'student-1',
+      }),
+    );
+    expect(mockLessonsRepository.updateStatus).toHaveBeenCalledWith(
+      'lesson-1',
+      'teacher-1',
+      LessonStatus.COMPLETED,
+    );
+  });
+
+  it('should throw when updating status of non-existent lesson', async () => {
+    mockLessonsRepository.updateStatus.mockResolvedValue(null);
+
+    await expect(
+      service.updateLessonStatus('teacher-1', 'unknown-lesson', {
+        status: LessonStatus.CANCELLED,
       }),
     ).rejects.toThrow(BadRequestException);
   });

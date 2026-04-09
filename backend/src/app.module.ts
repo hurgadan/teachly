@@ -9,6 +9,7 @@ import config from './config';
 import { AuthModule } from './modules/auth/auth.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
 import { GroupsModule } from './modules/groups/groups.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 import { StudentsModule } from './modules/students/students.module';
 import { UsersModule } from './modules/users/users.module';
 
@@ -26,6 +27,7 @@ import { UsersModule } from './modules/users/users.module';
     CalendarModule,
     StudentsModule,
     GroupsModule,
+    PaymentsModule,
     UsersModule,
   ],
 })
