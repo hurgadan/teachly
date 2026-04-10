@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---- Build stage ----
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /monorepo
 
 # Copy backend contracts needed for @contracts alias in nuxt.config.ts
@@ -12,14 +12,14 @@ COPY frontend/ ./frontend/
 
 WORKDIR /monorepo/frontend
 
-# Install dependencies using GITHUB_PAT secret for @hurgadan scope (GitHub Packages)
+# npm install (not npm ci) to handle platform-specific packages missing from macOS-generated lock file
 RUN --mount=type=secret,id=npm_token \
-    GITHUB_PAT=$(cat /run/secrets/npm_token) npm ci
+    GITHUB_PAT=$(cat /run/secrets/npm_token) npm install --prefer-offline
 
 RUN npm run build
 
 # ---- Production stage ----
-FROM node:20-alpine
+FROM node:22-alpine
 WORKDIR /app
 
 ENV HOST=0.0.0.0
