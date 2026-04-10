@@ -68,6 +68,8 @@ describe('StudentsService', () => {
         status: StudentStatus.ACTIVE,
         price: 2000,
         duration: 60,
+        paymentType: 'prepaid',
+        paymentThresholdLessons: 12,
         startDate: null,
         comment: null,
       });
