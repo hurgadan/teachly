@@ -25,6 +25,8 @@ const databaseConnectionOptions: DataSourceOptions = {
 export default (): AppConfig => ({
   appName: getEnv<string>('APP_NAME', true),
   databaseConnectionOptions,
+  jwtSecret: getEnv<string>('JWT_SECRET', true),
+  accessTokenExpires: getEnv<string>('ACCESS_TOKEN_EXPIRES', true),
 });
 
 function getEnv<T extends string | number | boolean>(envName: string, strict = true): T {

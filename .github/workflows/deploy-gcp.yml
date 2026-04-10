@@ -92,6 +92,7 @@ jobs:
             DB_NAME=teachly
             DB_LOGIN=teachly_user
             DB_ENABLE_LOGGING=true
+            ACCESS_TOKEN_EXPIRES=1h
           secrets: |
             DB_PASSWORD=DB_PASSWORD:latest
             JWT_SECRET=JWT_SECRET:latest
