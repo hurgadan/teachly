@@ -4,6 +4,7 @@ import {
   ConflictException,
   ExceptionFilter,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { QueryFailedError } from 'typeorm';
@@ -17,6 +18,8 @@ interface DatabaseError {
 
 @Catch(QueryFailedError)
 export class QueryFailedFilter implements ExceptionFilter {
+  private readonly logger = new Logger(QueryFailedFilter.name);
+
   catch(exception: QueryFailedError, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -30,6 +33,8 @@ export class QueryFailedFilter implements ExceptionFilter {
       response.status(HttpStatus.CONFLICT).json(conflictException.getResponse());
       return;
     }
+
+    this.logger.error(exception.message, exception.stack);
 
     response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       statusCode: 500,
