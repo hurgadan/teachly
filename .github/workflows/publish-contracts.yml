@@ -38,7 +38,7 @@ jobs:
       - name: Bump version
         id: bump
         working-directory: .
-        run: .github/scripts/bump-version.sh patch
+        run: .github/scripts/bump-version.sh backend/src/_contracts/package.json
 
       - name: Publish
         run: npm publish
