@@ -12,7 +12,6 @@ on:
     paths:
       - 'frontend/**'
       - 'backend/src/_contracts/**'
-      - '.github/workflows/publish-images.yml'
   workflow_dispatch:
 
 permissions:
