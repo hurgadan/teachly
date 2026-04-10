@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 jobs:
@@ -27,8 +27,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Checkout the exact commit that passed CI, not the workflow file's SHA
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Bump backend version
+        id: version
+        run: .github/scripts/bump-version.sh backend/package.json
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -47,8 +51,7 @@ jobs:
           images: ghcr.io/${{ github.repository_owner }}/teachly-backend
           tags: |
             type=raw,value=latest
-            type=sha,prefix=sha-,format=short,enable=${{ github.event_name == 'workflow_run' }}
-            type=sha,prefix=sha-,format=short,enable=${{ github.event_name == 'workflow_dispatch' }}
+            type=raw,value=${{ steps.version.outputs.value }}
 
       - name: Build and push backend image
         uses: docker/build-push-action@v6
@@ -61,11 +64,25 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add backend/package.json
+          git diff --cached --quiet || git commit -m "chore: bump backend version to ${{ steps.version.outputs.value }}"
+          git push
+
   build-frontend:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Bump frontend version
+        id: version
+        run: .github/scripts/bump-version.sh frontend/package.json
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -84,7 +101,7 @@ jobs:
           images: ghcr.io/${{ github.repository_owner }}/teachly-frontend
           tags: |
             type=raw,value=latest
-            type=sha,prefix=sha-,format=short
+            type=raw,value=${{ steps.version.outputs.value }}
 
       - name: Build and push frontend image
         uses: docker/build-push-action@v6
@@ -98,3 +115,11 @@ jobs:
           cache-to: type=gha,mode=max
           secrets: |
             npm_token=${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add frontend/package.json
+          git diff --cached --quiet || git commit -m "chore: bump frontend version to ${{ steps.version.outputs.value }}"
+          git push
