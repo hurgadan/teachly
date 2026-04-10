@@ -1,0 +1,10 @@
+**/.git
+**/node_modules
+frontend/.nuxt
+frontend/.output
+frontend/dist
+backend/dist
+backend/node_modules
+backend/docker-compose
+docs
+output
