@@ -93,3 +93,4 @@ jobs:
       - name: Tear down Docker Compose
         if: always()
         run: docker compose -f backend/docker-compose/docker-compose.yml -f backend/docker-compose/docker-compose.test.yml down --volumes --remove-orphans
+
