@@ -7,9 +7,13 @@ import * as process from 'node:process';
 import { DataSourceOptions } from 'typeorm';
 import { AppConfig } from './_common/types';
 
+const dbHost = getEnv<string>('DB_HOST');
+const isSocket = dbHost.startsWith('/');
+
 const databaseConnectionOptions: DataSourceOptions = {
   type: 'postgres',
-  host: getEnv<string>('DB_HOST'),
+  host: isSocket ? undefined : dbHost,
+  extra: isSocket ? { socketPath: dbHost } : undefined,
   port: getEnv<number>('DB_PORT'),
   username: getEnv<string>('DB_LOGIN'),
   password: getEnv<string>('DB_PASSWORD'),
