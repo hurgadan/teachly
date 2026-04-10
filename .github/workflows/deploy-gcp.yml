@@ -22,7 +22,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0 # Нужна вся история для корректного сравнения коммитов
 
       - name: Detect changes
         id: detect
@@ -33,17 +33,19 @@ jobs:
             echo "backend=true" >> "$GITHUB_OUTPUT"
             echo "frontend=true" >> "$GITHUB_OUTPUT"
           else
-            # Получаем список измененных файлов (включая коммит бота с бампом версии)
-            CHANGED=$(git diff --name-only HEAD~1 HEAD)
+            # SHA коммита, который запустил цепочку (тот самый мердж в main)
+            BASE_SHA=${{ github.event.workflow_run.head_sha }}
+            # Сравниваем текущий HEAD (со всеми бампами версии) с родителем мердж-коммита
+            CHANGED=$(git diff --name-only $BASE_SHA^ HEAD)
             
-            # Бэкенд деплоим, если есть изменения в backend/, но НЕ только в _contracts
+            echo "Changed files: $CHANGED"
+            
             if echo "$CHANGED" | grep '^backend/' | grep -qv '^backend/src/_contracts/'; then
               echo "backend=true" >> "$GITHUB_OUTPUT"
             else
               echo "backend=false" >> "$GITHUB_OUTPUT"
             fi
             
-            # Фронтенд деплоим, если есть изменения в frontend/
             if echo "$CHANGED" | grep -q '^frontend/'; then
               echo "frontend=true" >> "$GITHUB_OUTPUT"
             else
