@@ -51,7 +51,7 @@ jobs:
           images: ghcr.io/${{ github.repository_owner }}/teachly-backend
           tags: |
             type=raw,value=latest
-            type=raw,value=${{ steps.version.outputs.value }}
+            type=raw,value=${{ steps.version.outputs.version }}
 
       - name: Build and push backend image
         uses: docker/build-push-action@v6
@@ -69,7 +69,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add backend/package.json
-          git diff --cached --quiet || git commit -m "chore: bump backend version to ${{ steps.version.outputs.value }}"
+          git diff --cached --quiet || git commit -m "chore: bump backend version to ${{ steps.version.outputs.version }}"
+          git pull --rebase origin main
           git push
 
   build-frontend:
@@ -101,7 +102,7 @@ jobs:
           images: ghcr.io/${{ github.repository_owner }}/teachly-frontend
           tags: |
             type=raw,value=latest
-            type=raw,value=${{ steps.version.outputs.value }}
+            type=raw,value=${{ steps.version.outputs.version }}
 
       - name: Build and push frontend image
         uses: docker/build-push-action@v6
@@ -121,5 +122,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add frontend/package.json
-          git diff --cached --quiet || git commit -m "chore: bump frontend version to ${{ steps.version.outputs.value }}"
+          git diff --cached --quiet || git commit -m "chore: bump frontend version to ${{ steps.version.outputs.version }}"
+          git pull --rebase origin main
           git push
