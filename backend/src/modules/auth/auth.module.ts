@@ -15,13 +15,13 @@ import { LocalStrategy } from './strategies/local-strategy';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
-        const secret = configService.get<string>('JWT_SECRET');
+        const secret = configService.get<string>('jwtSecret');
         const signOptions = {
-          expiresIn: configService.get<StringValue>('ACCESS_TOKEN_EXPIRES'),
+          expiresIn: configService.get<StringValue>('accessTokenExpires'),
         };
 
         if (!secret || !signOptions.expiresIn) {
-          throw new Error('JWT_SECRET or ACCESS_TOKEN_EXPIRES envs is missing');
+          throw new Error('jwtSecret or accessTokenExpires envs is missing');
         }
 
         return {
