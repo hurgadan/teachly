@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { StudentStatus } from '../../../_contracts';
+import { DEFAULT_PAYMENT_THRESHOLD_LESSONS, DEFAULT_PAYMENT_TYPE } from '../constants';
 import { StudentEntity } from '../dao/student.entity';
 import { CreateStudentDto } from '../dto/create-student.dto';
 import { UpdateStudentDto } from '../dto/update-student.dto';
@@ -21,6 +22,8 @@ export class StudentsService {
       status: StudentStatus.ACTIVE,
       price: data.price,
       duration: data.duration,
+      paymentType: data.paymentType ?? DEFAULT_PAYMENT_TYPE,
+      paymentThresholdLessons: data.paymentThresholdLessons ?? DEFAULT_PAYMENT_THRESHOLD_LESSONS,
       startDate: data.startDate ?? null,
       comment: normalizeNullableText(data.comment),
     });
@@ -56,6 +59,10 @@ export class StudentsService {
       ...(data.status !== undefined ? { status: data.status } : {}),
       ...(data.price !== undefined ? { price: data.price } : {}),
       ...(data.duration !== undefined ? { duration: data.duration } : {}),
+      ...(data.paymentType !== undefined ? { paymentType: data.paymentType } : {}),
+      ...(data.paymentThresholdLessons !== undefined
+        ? { paymentThresholdLessons: data.paymentThresholdLessons }
+        : {}),
       ...(data.startDate !== undefined ? { startDate: data.startDate } : {}),
       ...(data.comment !== undefined ? { comment: normalizeNullableText(data.comment) } : {}),
     });

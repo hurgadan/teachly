@@ -18,7 +18,6 @@ import { LessonEntity } from '../../calendar/dao/lesson.entity';
 import { RecurringLessonEntity } from '../../calendar/dao/recurring-lesson.entity';
 import { GroupMemberEntity } from '../../groups/dao/group-member.entity';
 import { GroupEntity } from '../../groups/dao/group.entity';
-import { GroupsModule } from '../../groups/groups.module';
 import { StudentEntity } from '../../students/dao/student.entity';
 import { StudentsModule } from '../../students/students.module';
 import { UsersModule } from '../../users/users.module';
@@ -50,7 +49,6 @@ describe('payments.controller.e2e.spec.ts', () => {
         ]),
         AuthModule,
         StudentsModule,
-        GroupsModule,
         UsersModule,
         CalendarModule,
         PaymentsModule,
@@ -81,18 +79,22 @@ describe('payments.controller.e2e.spec.ts', () => {
       status: StudentStatus.ACTIVE,
       price: 2000,
       duration: 60,
+      paymentType: 'prepaid',
+      paymentThresholdLessons: 12,
     });
 
     const result = await request(httpServer)
       .post('/payments')
       .set('Authorization', `Bearer ${token}`)
-      .send({ studentId: student.id, amount: 2000, comment: 'April' })
+      .send({ studentId: student.id, lessonsCount: 1, type: 'prepaid', comment: 'April' })
       .expect(HttpStatus.CREATED);
 
     expect(result.body).toEqual(
       expect.objectContaining({
         studentId: student.id,
         amount: 2000,
+        lessonsCount: 1,
+        type: 'prepaid',
         comment: 'April',
       }),
     );
@@ -107,15 +109,27 @@ describe('payments.controller.e2e.spec.ts', () => {
       status: StudentStatus.ACTIVE,
       price: 1500,
       duration: 60,
+      paymentType: 'prepaid',
+      paymentThresholdLessons: 12,
     });
 
     await paymentsRepository.save([
-      { teacherId: teacher.id, studentId: student.id, groupId: null, amount: 1500, comment: null },
+      {
+        teacherId: teacher.id,
+        studentId: student.id,
+        groupId: null,
+        amount: 1500,
+        lessonsCount: 1,
+        type: 'prepaid',
+        comment: null,
+      },
       {
         teacherId: teacher.id,
         studentId: student.id,
         groupId: null,
         amount: 3000,
+        lessonsCount: 2,
+        type: 'prepaid',
         comment: 'March',
       },
     ]);
@@ -146,7 +160,7 @@ describe('payments.controller.e2e.spec.ts', () => {
     await request(httpServer)
       .post('/payments')
       .set('Authorization', `Bearer ${token}`)
-      .send({ amount: 1000 })
+      .send({ lessonsCount: 1, type: 'prepaid' }) // нет studentId
       .expect(HttpStatus.BAD_REQUEST);
   });
 
@@ -159,6 +173,8 @@ describe('payments.controller.e2e.spec.ts', () => {
       status: StudentStatus.ACTIVE,
       price: 2000,
       duration: 60,
+      paymentType: 'prepaid',
+      paymentThresholdLessons: 12,
     });
 
     // 2 завершённых урока × 2000 = 4000 charged
@@ -189,6 +205,8 @@ describe('payments.controller.e2e.spec.ts', () => {
       studentId: student.id,
       groupId: null,
       amount: 5000,
+      lessonsCount: 2,
+      type: 'prepaid',
       comment: null,
     });
 
@@ -202,6 +220,9 @@ describe('payments.controller.e2e.spec.ts', () => {
       totalPaid: 5000,
       totalCharged: 4000,
       balance: 1000,
+      paidLessonsCount: 2,
+      unpaidLessons: 0,
+      isOverdue: false,
     });
   });
 });

@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 
-import { Payment } from '../../../_contracts';
+import { Payment, PaymentType } from '../../../_contracts';
 
 export class PaymentDto implements Payment {
   @ApiProperty()
@@ -23,6 +23,14 @@ export class PaymentDto implements Payment {
   @ApiProperty()
   @Expose()
   public amount: number;
+
+  @ApiProperty()
+  @Expose()
+  public lessonsCount: number;
+
+  @ApiProperty({ enum: ['prepaid', 'postpaid'] })
+  @Expose()
+  public type: PaymentType;
 
   @ApiPropertyOptional({ nullable: true })
   @Expose()

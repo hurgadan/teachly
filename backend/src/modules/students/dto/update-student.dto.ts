@@ -12,7 +12,7 @@ import {
   Min,
 } from 'class-validator';
 
-import { StudentStatus, UpdateStudent } from '../../../_contracts';
+import { PaymentType, StudentStatus, UpdateStudent } from '../../../_contracts';
 import {
   STUDENT_CONTACT_MAX_LENGTH,
   STUDENT_DURATION_MAX,
@@ -79,6 +79,20 @@ export class UpdateStudentDto implements UpdateStudent {
   @Min(STUDENT_DURATION_MIN)
   @Max(STUDENT_DURATION_MAX)
   public duration?: number;
+
+  @ApiPropertyOptional({ enum: ['prepaid', 'postpaid'] })
+  @Expose()
+  @IsOptional()
+  @IsEnum(['prepaid', 'postpaid'])
+  public paymentType?: PaymentType;
+
+  @ApiPropertyOptional()
+  @Expose()
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  public paymentThresholdLessons?: number;
 
   @ApiPropertyOptional({ nullable: true })
   @Expose()

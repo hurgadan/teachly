@@ -3,4 +3,7 @@ export interface StudentBalance {
   totalPaid: number;
   totalCharged: number;
   balance: number;
+  paidLessonsCount: number;
+  unpaidLessons: number;
+  isOverdue: boolean;
 }

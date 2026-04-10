@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 
 import { TransformToDateString } from '../../../_common/utils/decorators/transform-to-date-string.decorator';
-import { Student, StudentStatus } from '../../../_contracts';
+import { PaymentType, Student, StudentStatus } from '../../../_contracts';
 
 export class StudentDto implements Student {
   @ApiProperty()
@@ -40,6 +40,14 @@ export class StudentDto implements Student {
   @ApiProperty()
   @Expose()
   public duration: number;
+
+  @ApiProperty({ enum: ['prepaid', 'postpaid'] })
+  @Expose()
+  public paymentType: PaymentType;
+
+  @ApiProperty()
+  @Expose()
+  public paymentThresholdLessons: number;
 
   @ApiProperty({ nullable: true })
   @Expose()

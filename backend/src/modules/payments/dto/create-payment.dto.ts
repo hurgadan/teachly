@@ -1,24 +1,22 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEnum, IsInt, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
 
-import { CreatePayment } from '../../../_contracts';
+import { CreatePayment, PaymentType } from '../../../_contracts';
 
 export class CreatePaymentDto implements CreatePayment {
-  @ApiPropertyOptional({ nullable: true })
-  @IsOptional()
+  @ApiProperty()
   @IsUUID()
-  public studentId?: string | null;
+  public studentId: string;
 
-  @ApiPropertyOptional({ nullable: true })
-  @IsOptional()
-  @IsUUID()
-  public groupId?: string | null;
-
-  @ApiPropertyOptional()
+  @ApiProperty()
   @IsInt()
   @Min(1)
-  @Max(10_000_000)
-  public amount: number;
+  @Max(100)
+  public lessonsCount: number;
+
+  @ApiProperty({ enum: ['prepaid', 'postpaid'] })
+  @IsEnum(['prepaid', 'postpaid'])
+  public type: PaymentType;
 
   @ApiPropertyOptional({ nullable: true })
   @IsOptional()

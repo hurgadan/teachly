@@ -1,3 +1,5 @@
+import { PaymentType } from '../payments';
+
 export interface CreateStudent {
   firstName: string;
   lastName?: string | null;
@@ -6,6 +8,8 @@ export interface CreateStudent {
   telegram?: string | null;
   price: number;
   duration: number;
+  paymentType?: PaymentType;
+  paymentThresholdLessons?: number;
   startDate?: string | null;
   comment?: string | null;
 }

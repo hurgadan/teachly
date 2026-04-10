@@ -43,6 +43,12 @@ export class PaymentEntity {
   @Column({ type: 'int', nullable: false })
   public amount: number;
 
+  @Column({ type: 'int', name: 'lessons_count', nullable: false, default: 1 })
+  public lessonsCount: number;
+
+  @Column({ type: 'varchar', length: 20, nullable: false, default: 'prepaid' })
+  public type: string;
+
   @Column({ type: 'text', nullable: true })
   public comment: string | null;
 

@@ -1,6 +1,8 @@
+import { PaymentType } from './payment-type.enum';
+
 export interface CreatePayment {
-  studentId?: string | null;
-  groupId?: string | null;
-  amount: number;
+  studentId: string;
+  lessonsCount: number;
+  type: PaymentType;
   comment?: string | null;
 }

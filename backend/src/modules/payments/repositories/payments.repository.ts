@@ -49,4 +49,15 @@ export class PaymentsRepository {
 
     return Number(result?.total ?? 0);
   }
+
+  public async sumLessonsCountByStudent(teacherId: string, studentId: string): Promise<number> {
+    const result = await this.repository
+      .createQueryBuilder('p')
+      .select('COALESCE(SUM(p.lessons_count), 0)', 'total')
+      .where('p.teacher_id = :teacherId', { teacherId })
+      .andWhere('p.student_id = :studentId', { studentId })
+      .getRawOne<{ total: string }>();
+
+    return Number(result?.total ?? 0);
+  }
 }
