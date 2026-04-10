@@ -1,0 +1,128 @@
+name: Deploy to Google Cloud
+
+on:
+  workflow_run:
+    workflows: ["Publish Docker Images"]
+    branches: [main]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changes
+        id: detect
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+            echo "frontend=true" >> "$GITHUB_OUTPUT"
+          else
+            # Получаем список измененных файлов (включая коммит бота с бампом версии)
+            CHANGED=$(git diff --name-only HEAD~1 HEAD)
+            
+            # Бэкенд деплоим, если есть изменения в backend/, но НЕ только в _contracts
+            if echo "$CHANGED" | grep '^backend/' | grep -qv '^backend/src/_contracts/'; then
+              echo "backend=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "backend=false" >> "$GITHUB_OUTPUT"
+            fi
+            
+            # Фронтенд деплоим, если есть изменения в frontend/
+            if echo "$CHANGED" | grep -q '^frontend/'; then
+              echo "frontend=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "frontend=false" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - id: auth
+        name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/542967259899/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider
+          service_account: github-actions-sa@project-ed1a7d3b-8c57-4845-953.iam.gserviceaccount.com
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker
+        if: steps.detect.outputs.backend == 'true' || steps.detect.outputs.frontend == 'true'
+        run: gcloud auth configure-docker europe-west3-docker.pkg.dev --quiet
+
+      # --- BACKEND SECTION ---
+      - name: Push Backend Image to Artifact Registry
+        if: steps.detect.outputs.backend == 'true'
+        run: |
+          docker pull ghcr.io/${{ github.repository_owner }}/teachly-backend:latest
+          docker tag ghcr.io/${{ github.repository_owner }}/teachly-backend:latest europe-west3-docker.pkg.dev/project-ed1a7d3b-8c57-4845-953/teachly-repo/backend:latest
+          docker push europe-west3-docker.pkg.dev/project-ed1a7d3b-8c57-4845-953/teachly-repo/backend:latest
+
+      - name: Deploy Backend to Cloud Run
+        if: steps.detect.outputs.backend == 'true'
+        id: deploy-backend
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: backend
+          image: europe-west3-docker.pkg.dev/project-ed1a7d3b-8c57-4845-953/teachly-repo/backend:latest
+          region: europe-west3
+          flags: |
+            --port=3000
+            --add-cloudsql-instances=project-ed1a7d3b-8c57-4845-953:europe-west3:teachly-db
+            --allow-unauthenticated
+          env_vars: |
+            APP_NAME=Teachly-Backend
+            DB_HOST=/cloudsql/project-ed1a7d3b-8c57-4845-953:europe-west3:teachly-db
+            DB_PORT=5432
+            DB_NAME=teachly
+            DB_LOGIN=teachly_user
+            DB_ENABLE_LOGGING=true
+          secrets: |
+            DB_PASSWORD=DB_PASSWORD:latest
+            JWT_SECRET=JWT_SECRET:latest
+
+      # --- GET BACKEND URL (If frontend is deployed but backend is not) ---
+      - name: Get Backend URL
+        if: steps.detect.outputs.backend == 'false' && steps.detect.outputs.frontend == 'true'
+        id: get-backend-url
+        run: |
+          URL=$(gcloud run services describe backend --region=europe-west3 --format='value(status.url)' 2>/dev/null || echo "")
+          if [ -z "$URL" ]; then
+            echo "Error: Backend service not found. You must deploy backend at least once before deploying frontend alone."
+            exit 1
+          fi
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      # --- FRONTEND SECTION ---
+      - name: Push Frontend Image to Artifact Registry
+        if: steps.detect.outputs.frontend == 'true'
+        run: |
+          docker pull ghcr.io/${{ github.repository_owner }}/teachly-frontend:latest
+          docker tag ghcr.io/${{ github.repository_owner }}/teachly-frontend:latest europe-west3-docker.pkg.dev/project-ed1a7d3b-8c57-4845-953/teachly-repo/frontend:latest
+          docker push europe-west3-docker.pkg.dev/project-ed1a7d3b-8c57-4845-953/teachly-repo/frontend:latest
+
+      - name: Deploy Frontend to Cloud Run
+        if: steps.detect.outputs.frontend == 'true'
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: frontend
+          image: europe-west3-docker.pkg.dev/project-ed1a7d3b-8c57-4845-953/teachly-repo/frontend:latest
+          region: europe-west3
+          flags: --port=3000 --allow-unauthenticated
+          env_vars: |
+            NUXT_PUBLIC_API_BASE=${{ steps.deploy-backend.outputs.url || steps.get-backend-url.outputs.url }}
