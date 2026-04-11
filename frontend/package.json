@@ -11,7 +11,7 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
-    "@hurgadan/teachly-contracts": "^0.0.8",
+    "@hurgadan/teachly-contracts": "^0.1.0",
     "nuxt": "^4.1.0",
     "vue": "^3.5.0",
     "vue-router": "^4.5.0"
