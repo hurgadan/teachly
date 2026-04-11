@@ -110,7 +110,7 @@ const statusClass: Record<string, string> = {
               <td>
                 <div class="flex items-center gap-3">
                   <div class="avatar placeholder">
-                    <div class="bg-neutral text-neutral-content w-8 rounded-full">
+                    <div class="bg-neutral text-neutral-content w-8 rounded-full flex items-center justify-center">
                       <span class="text-xs">{{ getStudentInitials(student) }}</span>
                     </div>
                   </div>
@@ -126,7 +126,7 @@ const statusClass: Record<string, string> = {
                 </span>
               </td>
               <td class="font-medium">{{ formatPrice(student.price) }}</td>
-              <td>{{ typeof student.duration === 'number' ? `${student.duration} мин` : '—' }}</td>
+              <td>{{ student.duration }} мин</td>
               <td>
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 text-base-content/30">
                   <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
@@ -150,7 +150,7 @@ const statusClass: Record<string, string> = {
           <div class="flex items-start justify-between">
             <div class="flex items-center gap-3">
               <div class="avatar placeholder">
-                <div class="bg-neutral text-neutral-content w-10 rounded-full">
+                <div class="bg-neutral text-neutral-content w-10 rounded-full flex items-center justify-center">
                   <span class="text-sm">{{ getStudentInitials(student) }}</span>
                 </div>
               </div>
@@ -167,7 +167,7 @@ const statusClass: Record<string, string> = {
           </div>
           <div class="flex items-center gap-4 mt-2 text-sm text-base-content/70">
             <span>{{ formatPrice(student.price) }}</span>
-            <span>{{ typeof student.duration === 'number' ? `${student.duration} мин` : '—' }}</span>
+            <span>{{ student.duration }} мин</span>
           </div>
         </div>
       </NuxtLink>
