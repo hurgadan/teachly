@@ -79,17 +79,24 @@ function onLessonCreated() {
   void loadWeek()
 }
 
+function toLocalDateStr(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 function getWeekStart() {
   const current = new Date()
   const mondayOffset = current.getDay() === 0 ? -6 : 1 - current.getDay()
   current.setDate(current.getDate() + mondayOffset)
-  return current.toISOString().slice(0, 10)
+  return toLocalDateStr(current)
 }
 
 function shiftWeek(startDate: string, offsetDays: number) {
   const next = new Date(`${startDate}T00:00:00`)
   next.setDate(next.getDate() + offsetDays)
-  return next.toISOString().slice(0, 10)
+  return toLocalDateStr(next)
 }
 
 function buildWeekDays(startDate: string) {
@@ -100,7 +107,7 @@ function buildWeekDays(startDate: string) {
     return {
       label: labels[index],
       date: date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
-      dateStr: date.toISOString().slice(0, 10),
+      dateStr: toLocalDateStr(date),
     }
   })
 }
@@ -114,7 +121,7 @@ function buildWeekDays(startDate: string) {
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
-          Разовое занятие
+          Добавить занятия
         </button>
       </template>
     </UiPageHeader>
@@ -226,6 +233,6 @@ function buildWeekDays(startDate: string) {
       </div>
     </div>
 
-    <ModalsCreateLessonModal :open="showCreateLesson" @close="showCreateLesson = false" @created="onLessonCreated" />
+    <ModalsCreateLessonModal :open="showCreateLesson" :week-start="currentWeekStart" @close="showCreateLesson = false" @created="onLessonCreated" />
   </div>
 </template>
