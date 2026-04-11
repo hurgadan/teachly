@@ -14,6 +14,9 @@ type RequiredUserParams = Omit<
   | 'timezone'
   | 'bufferMinutesAfterLesson'
   | 'workSchedules'
+  | 'firstName'
+  | 'lastName'
+  | 'avatarData'
 >;
 
 const getDefaultParam = (): RequiredUserParams => {

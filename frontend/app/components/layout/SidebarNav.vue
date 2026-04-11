@@ -2,6 +2,7 @@
 import { StudentStatus } from '@hurgadan/teachly-contracts'
 
 const route = useRoute()
+const { user } = useAuth()
 const { listStudents } = useStudentsApi()
 
 const { data: students } = await useAsyncData('sidebar-students', () => listStudents(), { default: () => [] })
@@ -88,13 +89,16 @@ function isActive(to: string) {
 
     <div class="border-t border-base-300 p-4">
       <div class="flex items-center gap-3">
-        <div class="avatar placeholder">
-          <div class="bg-primary text-primary-content w-9 rounded-full">
-            <span class="text-sm font-medium">АИ</span>
-          </div>
-        </div>
+        <UiUserAvatar
+          :avatar-data="user?.avatarData"
+          :first-name="user?.firstName"
+          :last-name="user?.lastName"
+          :email="user?.email"
+        />
         <div class="min-w-0">
-          <p class="text-sm font-medium truncate">Анна Иванова</p>
+          <p class="text-sm font-medium truncate">
+            {{ user?.firstName ? [user.firstName, user.lastName].filter(Boolean).join(' ') : user?.email }}
+          </p>
           <p class="text-xs text-base-content/60">Преподаватель</p>
         </div>
       </div>

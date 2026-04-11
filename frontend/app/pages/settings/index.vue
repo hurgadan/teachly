@@ -24,10 +24,42 @@ const timezoneOptions = Intl.supportedValuesOf('timeZone')
 
 // Profile form
 const profileForm = reactive({
+  firstName: null as string | null,
+  lastName: null as string | null,
+  avatarData: null as string | null,
   language: Language.RU,
   bufferMinutesAfterLesson: 0,
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 })
+
+function cropToSquare(file: File, size = 50): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = size
+      canvas.height = size
+      const ctx = canvas.getContext('2d')!
+      const side = Math.min(img.width, img.height)
+      const sx = (img.width - side) / 2
+      const sy = (img.height - side) / 2
+      ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size)
+      URL.revokeObjectURL(img.src)
+      resolve(canvas.toDataURL('image/jpeg', 0.85))
+    }
+    img.src = URL.createObjectURL(file)
+  })
+}
+
+async function handleAvatarChange(event: Event) {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  profileForm.avatarData = await cropToSquare(file)
+}
+
+function removeAvatar() {
+  profileForm.avatarData = null
+}
 
 // Schedule form
 interface ScheduleDay {
@@ -66,6 +98,9 @@ async function loadProfile() {
     const profile: TeacherProfile = await getMyProfile()
     user.value = profile
     if (profile) {
+      profileForm.firstName = profile.firstName
+      profileForm.lastName = profile.lastName
+      profileForm.avatarData = profile.avatarData
       profileForm.language = profile.language
       profileForm.bufferMinutesAfterLesson = profile.bufferMinutesAfterLesson
       profileForm.timezone = profile.timezone
@@ -99,6 +134,9 @@ async function handleSaveProfile() {
   savingProfile.value = true
   try {
     const payload: UpdateProfile = {
+      firstName: profileForm.firstName || null,
+      lastName: profileForm.lastName || null,
+      avatarData: profileForm.avatarData,
       language: profileForm.language,
       bufferMinutesAfterLesson: profileForm.bufferMinutesAfterLesson,
       timezone: profileForm.timezone,
@@ -160,6 +198,30 @@ function removeInterval(dayIndex: number, intervalIndex: number) {
             <span class="loading loading-spinner loading-md" />
           </div>
           <div v-else class="grid gap-4">
+            <!-- Avatar -->
+            <div class="flex items-center gap-4">
+              <UiUserAvatar
+                :avatar-data="profileForm.avatarData"
+                :first-name="profileForm.firstName"
+                :last-name="profileForm.lastName"
+                :email="user?.email"
+                size="md"
+              />
+              <div class="flex gap-2">
+                <label class="btn btn-outline btn-sm cursor-pointer">
+                  Загрузить фото
+                  <input type="file" accept="image/*" class="hidden" @change="handleAvatarChange" />
+                </label>
+                <button
+                  v-if="profileForm.avatarData"
+                  class="btn btn-ghost btn-sm text-error"
+                  @click="removeAvatar"
+                >
+                  Удалить
+                </button>
+              </div>
+            </div>
+
             <fieldset class="fieldset">
               <legend class="fieldset-legend">Email</legend>
               <input
@@ -169,6 +231,28 @@ function removeInterval(dayIndex: number, intervalIndex: number) {
                 disabled
               />
             </fieldset>
+            <div class="grid grid-cols-2 gap-3">
+              <fieldset class="fieldset">
+                <legend class="fieldset-legend">Имя</legend>
+                <input
+                  v-model="profileForm.firstName"
+                  type="text"
+                  class="input input-bordered w-full"
+                  placeholder="Не указано"
+                  maxlength="120"
+                />
+              </fieldset>
+              <fieldset class="fieldset">
+                <legend class="fieldset-legend">Фамилия</legend>
+                <input
+                  v-model="profileForm.lastName"
+                  type="text"
+                  class="input input-bordered w-full"
+                  placeholder="Не указано"
+                  maxlength="120"
+                />
+              </fieldset>
+            </div>
             <fieldset class="fieldset">
               <legend class="fieldset-legend">Язык интерфейса</legend>
               <select v-model="profileForm.language" class="select select-bordered w-full">

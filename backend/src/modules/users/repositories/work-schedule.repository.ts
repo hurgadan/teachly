@@ -22,7 +22,16 @@ export class WorkScheduleRepository {
     teacherId: string,
     items: Partial<WorkScheduleEntity>[],
   ): Promise<WorkScheduleEntity[]> {
-    const entities = items.map((item) => this.repository.create({ ...item, teacherId }));
+    const existing = await this.findByTeacherId(teacherId);
+    const existingByDay = new Map(existing.map((e) => [e.dayOfWeek, e.id]));
+
+    const entities = items.map((item) =>
+      this.repository.create({
+        ...item,
+        teacherId,
+        id: existingByDay.get(item.dayOfWeek!),
+      }),
+    );
 
     return this.repository.save(entities);
   }
