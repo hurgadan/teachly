@@ -14,6 +14,18 @@ export class TeacherProfileDto implements TeacherProfile {
   @Expose()
   email: string;
 
+  @ApiProperty({ nullable: true })
+  @Expose()
+  firstName: string | null;
+
+  @ApiProperty({ nullable: true })
+  @Expose()
+  lastName: string | null;
+
+  @ApiProperty({ nullable: true })
+  @Expose()
+  avatarData: string | null;
+
   @ApiProperty({ enum: Language })
   @Expose()
   language: Language;

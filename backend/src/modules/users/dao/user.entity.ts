@@ -23,6 +23,15 @@ export class UserEntity {
   @Column({ nullable: false, name: 'password_hash' })
   public passwordHash: string;
 
+  @Column({ type: 'varchar', length: 120, name: 'first_name', nullable: true })
+  public firstName: string | null;
+
+  @Column({ type: 'varchar', length: 120, name: 'last_name', nullable: true })
+  public lastName: string | null;
+
+  @Column({ type: 'text', name: 'avatar_data', nullable: true })
+  public avatarData: string | null;
+
   @Column({
     type: 'varchar',
     length: 2,
