@@ -19,4 +19,16 @@ export class StudentBalanceDto implements StudentBalance {
   @ApiProperty()
   @Expose()
   public balance: number;
+
+  @ApiProperty()
+  @Expose()
+  public paidLessonsCount: number;
+
+  @ApiProperty()
+  @Expose()
+  public unpaidLessons: number;
+
+  @ApiProperty()
+  @Expose()
+  public isOverdue: boolean;
 }

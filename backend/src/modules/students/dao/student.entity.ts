@@ -58,6 +58,18 @@ export class StudentEntity {
   @Column({ type: 'int', nullable: false })
   public duration: number;
 
+  @Column({
+    type: 'varchar',
+    length: 20,
+    name: 'payment_type',
+    nullable: false,
+    default: 'prepaid',
+  })
+  public paymentType: string;
+
+  @Column({ type: 'int', name: 'payment_threshold_lessons', nullable: false, default: 12 })
+  public paymentThresholdLessons: number;
+
   @Column({ type: 'date', name: 'start_date', nullable: true })
   public startDate: string | null;
 

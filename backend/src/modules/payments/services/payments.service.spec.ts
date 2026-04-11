@@ -1,9 +1,7 @@
-import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { PaymentsService } from './payments.service';
 import { LessonsRepository } from '../../calendar/repositories/lessons.repository';
-import { GroupsService } from '../../groups/services/groups.service';
 import { StudentsService } from '../../students/services/students.service';
 import { PaymentsRepository } from '../repositories/payments.repository';
 
@@ -14,6 +12,7 @@ describe('PaymentsService', () => {
     createOne: jest.fn(),
     findPaginated: jest.fn(),
     sumByStudent: jest.fn(),
+    sumLessonsCountByStudent: jest.fn(),
   };
 
   const mockLessonsRepository = {
@@ -24,10 +23,6 @@ describe('PaymentsService', () => {
     getById: jest.fn(),
   };
 
-  const mockGroupsService = {
-    getById: jest.fn(),
-  };
-
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -35,7 +30,6 @@ describe('PaymentsService', () => {
         { provide: PaymentsRepository, useValue: mockPaymentsRepository },
         { provide: LessonsRepository, useValue: mockLessonsRepository },
         { provide: StudentsService, useValue: mockStudentsService },
-        { provide: GroupsService, useValue: mockGroupsService },
       ],
     }).compile();
 
@@ -46,21 +40,24 @@ describe('PaymentsService', () => {
     jest.clearAllMocks();
   });
 
-  it('should create payment for student', async () => {
-    mockStudentsService.getById.mockResolvedValue({ id: 'student-1' });
+  it('should create payment for student and calculate amount from price', async () => {
+    mockStudentsService.getById.mockResolvedValue({ id: 'student-1', price: 1500 });
     mockPaymentsRepository.createOne.mockResolvedValue({
       id: 'payment-1',
       teacherId: 'teacher-1',
       studentId: 'student-1',
       groupId: null,
-      amount: 1500,
+      amount: 3000,
+      lessonsCount: 2,
+      type: 'prepaid',
       comment: 'April lesson',
       createdAt: new Date('2026-04-06T10:00:00.000Z'),
     });
 
     const result = await service.create('teacher-1', {
       studentId: 'student-1',
-      amount: 1500,
+      lessonsCount: 2,
+      type: 'prepaid',
       comment: 'April lesson',
     });
 
@@ -68,48 +65,73 @@ describe('PaymentsService', () => {
       expect.objectContaining({
         id: 'payment-1',
         studentId: 'student-1',
-        amount: 1500,
+        amount: 3000,
+        lessonsCount: 2,
+        type: 'prepaid',
       }),
     );
     expect(mockStudentsService.getById).toHaveBeenCalledWith('teacher-1', 'student-1');
-  });
-
-  it('should throw when both studentId and groupId provided', async () => {
-    await expect(
-      service.create('teacher-1', { studentId: 'student-1', groupId: 'group-1', amount: 1000 }),
-    ).rejects.toThrow(BadRequestException);
-  });
-
-  it('should throw when neither studentId nor groupId provided', async () => {
-    await expect(service.create('teacher-1', { amount: 1000 })).rejects.toThrow(
-      BadRequestException,
+    expect(mockPaymentsRepository.createOne).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: 3000, lessonsCount: 2, type: 'prepaid' }),
     );
   });
 
-  it('should calculate student balance', async () => {
-    mockStudentsService.getById.mockResolvedValue({ id: 'student-1', price: 2000 });
+  it('should calculate student balance with isOverdue for prepaid', async () => {
+    mockStudentsService.getById.mockResolvedValue({
+      id: 'student-1',
+      price: 2000,
+      paymentType: 'prepaid',
+      paymentThresholdLessons: 12,
+    });
     mockPaymentsRepository.sumByStudent.mockResolvedValue(6000);
-    mockLessonsRepository.countCompletedByStudent.mockResolvedValue(2);
+    mockPaymentsRepository.sumLessonsCountByStudent.mockResolvedValue(3);
+    mockLessonsRepository.countCompletedByStudent.mockResolvedValue(4);
 
     const result = await service.getStudentBalance('teacher-1', 'student-1');
 
     expect(result).toEqual({
       studentId: 'student-1',
       totalPaid: 6000,
-      totalCharged: 4000,
-      balance: 2000,
+      totalCharged: 8000,
+      balance: -2000,
+      paidLessonsCount: 3,
+      unpaidLessons: 1,
+      isOverdue: true,
     });
   });
 
-  it('should return negative balance when student owes money', async () => {
-    mockStudentsService.getById.mockResolvedValue({ id: 'student-1', price: 2000 });
-    mockPaymentsRepository.sumByStudent.mockResolvedValue(2000);
-    mockLessonsRepository.countCompletedByStudent.mockResolvedValue(3);
+  it('should not be overdue for postpaid below threshold', async () => {
+    mockStudentsService.getById.mockResolvedValue({
+      id: 'student-1',
+      price: 2000,
+      paymentType: 'postpaid',
+      paymentThresholdLessons: 12,
+    });
+    mockPaymentsRepository.sumByStudent.mockResolvedValue(0);
+    mockPaymentsRepository.sumLessonsCountByStudent.mockResolvedValue(0);
+    mockLessonsRepository.countCompletedByStudent.mockResolvedValue(5);
 
     const result = await service.getStudentBalance('teacher-1', 'student-1');
 
-    expect(result.balance).toBe(-4000);
-    expect(result.totalCharged).toBe(6000);
+    expect(result.unpaidLessons).toBe(5);
+    expect(result.isOverdue).toBe(false);
+  });
+
+  it('should be overdue for postpaid at or above threshold', async () => {
+    mockStudentsService.getById.mockResolvedValue({
+      id: 'student-1',
+      price: 2000,
+      paymentType: 'postpaid',
+      paymentThresholdLessons: 12,
+    });
+    mockPaymentsRepository.sumByStudent.mockResolvedValue(0);
+    mockPaymentsRepository.sumLessonsCountByStudent.mockResolvedValue(0);
+    mockLessonsRepository.countCompletedByStudent.mockResolvedValue(12);
+
+    const result = await service.getStudentBalance('teacher-1', 'student-1');
+
+    expect(result.unpaidLessons).toBe(12);
+    expect(result.isOverdue).toBe(true);
   });
 
   it('should return paginated payments', async () => {
@@ -121,6 +143,8 @@ describe('PaymentsService', () => {
           studentId: 'student-1',
           groupId: null,
           amount: 2000,
+          lessonsCount: 1,
+          type: 'prepaid',
           comment: null,
           createdAt: new Date('2026-04-06T10:00:00.000Z'),
         },

@@ -3,7 +3,7 @@ import type { Student, StudentStatus } from '~/types/students'
 import type { Lesson } from '~/types/calendar'
 import type { Payment } from '~/types/payments'
 import type { StudentBalance } from '@hurgadan/teachly-contracts'
-import { LessonStatus } from '@hurgadan/teachly-contracts'
+import { LessonStatus, type PaymentType } from '@hurgadan/teachly-contracts'
 
 const route = useRoute()
 const { getStudent, updateStudent, getStudentBalance } = useStudentsApi()
@@ -48,6 +48,8 @@ const form = reactive({
   status: 'active' as StudentStatus,
   price: 2000,
   duration: 60,
+  paymentType: 'prepaid' as PaymentType,
+  paymentThresholdLessons: 12,
   startDate: '',
   comment: '',
 })
@@ -97,6 +99,8 @@ async function loadStudent() {
       form.status = student.value.status
       form.price = student.value.price
       form.duration = student.value.duration
+      form.paymentType = student.value.paymentType
+      form.paymentThresholdLessons = student.value.paymentThresholdLessons
       form.startDate = student.value.startDate || ''
       form.comment = student.value.comment || ''
     }
@@ -159,6 +163,8 @@ async function handleSaveProfile() {
       status: form.status,
       price: form.price,
       duration: form.duration,
+      paymentType: form.paymentType,
+      paymentThresholdLessons: form.paymentThresholdLessons,
       startDate: form.startDate || null,
       comment: form.comment || null,
     })
@@ -277,6 +283,23 @@ onMounted(async () => {
                 </fieldset>
               </div>
               <fieldset class="fieldset">
+                <legend class="fieldset-legend">Тип оплаты</legend>
+                <div class="flex gap-4 pt-1">
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" v-model="form.paymentType" value="prepaid" class="radio radio-sm radio-primary" />
+                    <span class="text-sm">Предоплата</span>
+                  </label>
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" v-model="form.paymentType" value="postpaid" class="radio radio-sm radio-primary" />
+                    <span class="text-sm">Постфактум</span>
+                  </label>
+                </div>
+              </fieldset>
+              <fieldset v-if="form.paymentType === 'postpaid'" class="fieldset">
+                <legend class="fieldset-legend">Порог оплаты, занятий</legend>
+                <input v-model.number="form.paymentThresholdLessons" type="number" class="input input-bordered w-full" min="1" max="100" step="1" />
+              </fieldset>
+              <fieldset class="fieldset">
                 <legend class="fieldset-legend">Дата начала занятий</legend>
                 <input v-model="form.startDate" type="date" class="input input-bordered w-full" />
               </fieldset>
@@ -346,12 +369,21 @@ onMounted(async () => {
         <span class="loading loading-spinner loading-lg" />
       </div>
       <template v-else>
+        <!-- Debt alert -->
+        <div v-if="balance?.isOverdue" class="alert alert-error mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5 shrink-0">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+          </svg>
+          <span>Долг: {{ balance.unpaidLessons }} неоплаченных занятий ({{ formatPrice(balance.unpaidLessons * (student?.price ?? 0)) }})</span>
+        </div>
+
         <!-- Balance card -->
         <div v-if="balance" class="grid grid-cols-3 gap-3 mb-4">
           <div class="card bg-base-100 shadow-sm">
             <div class="card-body p-4">
-              <p class="text-xs text-base-content/60 uppercase tracking-wide">Оплачено</p>
-              <p class="text-xl font-bold mt-1 text-success">{{ formatPrice(balance.totalPaid) }}</p>
+              <p class="text-xs text-base-content/60 uppercase tracking-wide">Оплачено занятий</p>
+              <p class="text-xl font-bold mt-1 text-success">{{ balance.paidLessonsCount }}</p>
+              <p class="text-xs text-base-content/40 mt-0.5">{{ formatPrice(balance.totalPaid) }}</p>
             </div>
           </div>
           <div class="card bg-base-100 shadow-sm">

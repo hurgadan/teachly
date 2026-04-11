@@ -3,6 +3,7 @@ import { Expose } from 'class-transformer';
 import {
   IsDateString,
   IsEmail,
+  IsEnum,
   IsInt,
   IsOptional,
   IsString,
@@ -11,8 +12,10 @@ import {
   Min,
 } from 'class-validator';
 
-import { CreateStudent } from '../../../_contracts';
+import { CreateStudent, PaymentType } from '../../../_contracts';
 import {
+  DEFAULT_PAYMENT_THRESHOLD_LESSONS,
+  DEFAULT_PAYMENT_TYPE,
   STUDENT_CONTACT_MAX_LENGTH,
   STUDENT_DURATION_MAX,
   STUDENT_DURATION_MIN,
@@ -69,6 +72,20 @@ export class CreateStudentDto implements CreateStudent {
   @Min(STUDENT_DURATION_MIN)
   @Max(STUDENT_DURATION_MAX)
   public duration: number;
+
+  @ApiPropertyOptional({ enum: ['prepaid', 'postpaid'], default: DEFAULT_PAYMENT_TYPE })
+  @Expose()
+  @IsOptional()
+  @IsEnum(['prepaid', 'postpaid'])
+  public paymentType?: PaymentType;
+
+  @ApiPropertyOptional({ default: DEFAULT_PAYMENT_THRESHOLD_LESSONS })
+  @Expose()
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  public paymentThresholdLessons?: number;
 
   @ApiPropertyOptional({ nullable: true })
   @Expose()

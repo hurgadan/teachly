@@ -5,3 +5,5 @@ export const STUDENT_PRICE_MAX = 1_000_000;
 export const STUDENT_DURATION_MIN = 30;
 export const STUDENT_DURATION_MAX = 180;
 export const STUDENT_DURATION_STEP = 15;
+export const DEFAULT_PAYMENT_TYPE = 'prepaid' as const;
+export const DEFAULT_PAYMENT_THRESHOLD_LESSONS = 12;
