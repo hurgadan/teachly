@@ -76,7 +76,7 @@ export class CalendarService {
       const occupied = dayLessons.map((lesson) => {
         const { minutes } = utcToLocal(lesson.startAt, profile.timezone);
         return {
-          start: minutes,
+          start: minutes - profile.bufferMinutesAfterLesson,
           end: minutes + lesson.duration + profile.bufferMinutesAfterLesson,
         };
       });
@@ -85,6 +85,8 @@ export class CalendarService {
         const intervalStart = timeToMinutes(interval.startTime);
         const intervalEnd = timeToMinutes(interval.endTime);
 
+        const now = new Date();
+
         for (
           let cursor = intervalStart;
           cursor + duration <= intervalEnd;
@@ -92,8 +94,9 @@ export class CalendarService {
         ) {
           const slotEnd = cursor + duration;
           const isConflict = occupied.some((range) => cursor < range.end && slotEnd > range.start);
+          const slotStartAt = localToUtc(weekDay.date, minutesToTime(cursor), profile.timezone);
 
-          if (!isConflict) {
+          if (!isConflict && slotStartAt > now) {
             slots.push({
               date: weekDay.date,
               dayOfWeek: weekDay.dayOfWeek,
@@ -166,6 +169,12 @@ export class CalendarService {
       this.usersService.getProfile(teacherId),
     ]);
 
+    const startAt = localToUtc(data.date, data.startTime, profile.timezone);
+
+    if (startAt <= new Date()) {
+      throw new BadRequestException('Cannot create a lesson in the past');
+    }
+
     const availableSlots = await this.getAvailableSlots(teacherId, data.date, data.duration);
     const isAvailable = availableSlots.some(
       (slot) => slot.date === data.date && slot.startTime === data.startTime,
@@ -174,8 +183,6 @@ export class CalendarService {
     if (!isAvailable) {
       throw new BadRequestException('Selected slot is not available');
     }
-
-    const startAt = localToUtc(data.date, data.startTime, profile.timezone);
 
     const lesson = await this.lessonsRepository.createOne({
       teacherId,

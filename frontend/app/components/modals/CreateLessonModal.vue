@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import { addDays, format, parseISO, startOfWeek } from 'date-fns'
 import type { AvailableSlot } from '~/types/calendar'
 import type { Group } from '~/types/groups'
 import type { Student } from '~/types/students'
 
-const props = defineProps<{ open: boolean }>()
+const props = defineProps<{ open: boolean; weekStart?: string }>()
 const emit = defineEmits<{ close: []; created: [] }>()
 
 const { createLesson, createRecurringLesson, getAvailableSlots } = useCalendarApi()
@@ -30,7 +31,7 @@ const workSchedule = ref<Array<{ dayOfWeek: number; isWorkday: boolean }>>([])
 const apiSlots = ref<AvailableSlot[]>([])
 const selectedSlot = ref<AvailableSlot | null>(null)
 const selectedSlots = ref<Array<{ date: string; dayOfWeek: number; startTime: string }>>([])
-const weekStartDate = ref(getWeekStartDate())
+const weekStartDate = ref(props.weekStart ?? getWeekStartDate())
 const activeDay = ref('0')
 
 const activeStudents = computed(() => students.value.filter((student) => student.status === 'active'))
@@ -235,7 +236,7 @@ function resetForm() {
   form.studentId = ''
   form.groupId = ''
   form.duration = 60
-  weekStartDate.value = getWeekStartDate()
+  weekStartDate.value = props.weekStart ?? getWeekStartDate()
   activeDay.value = '0'
   selectedSlot.value = null
   selectedSlots.value = []
@@ -246,26 +247,21 @@ function getSlotEndTime(startTime: string) {
 }
 
 function getWeekStartDate() {
-  const current = new Date()
-  const mondayOffset = current.getDay() === 0 ? -6 : 1 - current.getDay()
-  current.setDate(current.getDate() + mondayOffset)
-  return current.toISOString().slice(0, 10)
+  return format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd')
 }
 
 function shiftWeek(startDate: string, offsetDays: number) {
-  const next = new Date(`${startDate}T00:00:00`)
-  next.setDate(next.getDate() + offsetDays)
-  return next.toISOString().slice(0, 10)
+  return format(addDays(parseISO(startDate), offsetDays), 'yyyy-MM-dd')
 }
 
 function buildWeekDays(startDate: string) {
   const labels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+  const start = parseISO(startDate)
   return Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(`${startDate}T00:00:00`)
-    date.setDate(date.getDate() + index)
+    const date = addDays(start, index)
     return {
       short: labels[index],
-      dateStr: date.toISOString().slice(0, 10),
+      dateStr: format(date, 'yyyy-MM-dd'),
       dateLabel: date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
       dayOfWeek: index,
     }

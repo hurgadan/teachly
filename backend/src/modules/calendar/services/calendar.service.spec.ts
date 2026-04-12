@@ -71,7 +71,7 @@ describe('CalendarService', () => {
   });
 
   it('should return paginated lessons for student', async () => {
-    const startAt = new Date('2026-04-06T06:00:00.000Z');
+    const startAt = new Date('2030-03-25T06:00:00.000Z');
 
     mockLessonsRepository.findPaginated.mockResolvedValue({
       items: [
@@ -127,21 +127,24 @@ describe('CalendarService', () => {
     // lesson at 10:00 Moscow = 07:00 UTC
     mockLessonsRepository.findInDateRange.mockResolvedValue([
       {
-        startAt: new Date('2026-04-06T07:00:00.000Z'),
+        startAt: new Date('2030-03-25T07:00:00.000Z'),
         duration: 60,
       },
     ]);
 
-    const result = await service.getAvailableSlots('teacher-1', '2026-04-06', 60);
+    const result = await service.getAvailableSlots('teacher-1', '2030-03-25', 60);
 
-    expect(result).toContainEqual(
-      expect.objectContaining({ date: '2026-04-06', startTime: '09:00' }),
-    );
-    expect(result).toContainEqual(
-      expect.objectContaining({ date: '2026-04-06', startTime: '11:15' }),
-    );
+    // 09:00–10:00 заканчивается ровно в начале занятия — буферного зазора нет → недоступен
     expect(result).not.toContainEqual(
-      expect.objectContaining({ date: '2026-04-06', startTime: '10:15' }),
+      expect.objectContaining({ date: '2030-03-25', startTime: '09:00' }),
+    );
+    // 11:15 — первый слот после занятия (10:00–11:00) + буфер 15 мин → доступен
+    expect(result).toContainEqual(
+      expect.objectContaining({ date: '2030-03-25', startTime: '11:15' }),
+    );
+    // 10:15 внутри занятия → недоступен
+    expect(result).not.toContainEqual(
+      expect.objectContaining({ date: '2030-03-25', startTime: '10:15' }),
     );
   });
 
@@ -153,12 +156,12 @@ describe('CalendarService', () => {
     });
     jest
       .spyOn(service, 'getAvailableSlots')
-      .mockResolvedValue([{ date: '2026-04-06', dayOfWeek: 0, startTime: '09:00' }]);
+      .mockResolvedValue([{ date: '2030-03-25', dayOfWeek: 0, startTime: '09:00' }]);
 
     await expect(
       service.createLesson('teacher-1', {
         studentId: 'student-1',
-        date: '2026-04-06',
+        date: '2030-03-25',
         startTime: '10:00',
         duration: 60,
       }),
@@ -166,7 +169,7 @@ describe('CalendarService', () => {
   });
 
   it('should update lesson status', async () => {
-    const startAt = new Date('2026-04-06T06:00:00.000Z');
+    const startAt = new Date('2030-03-25T06:00:00.000Z');
 
     mockLessonsRepository.updateStatus.mockResolvedValue({
       id: 'lesson-1',
@@ -218,7 +221,7 @@ describe('CalendarService', () => {
 
   it('should map week lessons into calendar response', async () => {
     // 09:00 Moscow = 06:00 UTC
-    const startAt = new Date('2026-04-06T06:00:00.000Z');
+    const startAt = new Date('2030-03-25T06:00:00.000Z');
 
     mockLessonsRepository.findInDateRange.mockResolvedValue([
       {
@@ -234,7 +237,7 @@ describe('CalendarService', () => {
       },
     ]);
 
-    const result = await service.getWeek('teacher-1', '2026-04-06');
+    const result = await service.getWeek('teacher-1', '2030-03-25');
 
     expect(result).toEqual([
       {

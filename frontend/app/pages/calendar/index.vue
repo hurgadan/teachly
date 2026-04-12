@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { addDays, format, parseISO, startOfWeek } from 'date-fns'
 import type { Lesson } from '~/types/calendar'
 
 const { getWeekLessons } = useCalendarApi()
@@ -80,27 +81,22 @@ function onLessonCreated() {
 }
 
 function getWeekStart() {
-  const current = new Date()
-  const mondayOffset = current.getDay() === 0 ? -6 : 1 - current.getDay()
-  current.setDate(current.getDate() + mondayOffset)
-  return current.toISOString().slice(0, 10)
+  return format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd')
 }
 
 function shiftWeek(startDate: string, offsetDays: number) {
-  const next = new Date(`${startDate}T00:00:00`)
-  next.setDate(next.getDate() + offsetDays)
-  return next.toISOString().slice(0, 10)
+  return format(addDays(parseISO(startDate), offsetDays), 'yyyy-MM-dd')
 }
 
 function buildWeekDays(startDate: string) {
   const labels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+  const start = parseISO(startDate)
   return Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(`${startDate}T00:00:00`)
-    date.setDate(date.getDate() + index)
+    const date = addDays(start, index)
     return {
       label: labels[index],
       date: date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
-      dateStr: date.toISOString().slice(0, 10),
+      dateStr: format(date, 'yyyy-MM-dd'),
     }
   })
 }
@@ -114,7 +110,7 @@ function buildWeekDays(startDate: string) {
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
-          Разовое занятие
+          Добавить занятия
         </button>
       </template>
     </UiPageHeader>
@@ -226,6 +222,6 @@ function buildWeekDays(startDate: string) {
       </div>
     </div>
 
-    <ModalsCreateLessonModal :open="showCreateLesson" @close="showCreateLesson = false" @created="onLessonCreated" />
+    <ModalsCreateLessonModal :open="showCreateLesson" :week-start="currentWeekStart" @close="showCreateLesson = false" @created="onLessonCreated" />
   </div>
 </template>

@@ -3,6 +3,7 @@ import { Server } from 'node:http';
 import { HttpStatus, INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
+import { format, nextMonday as getNextMonday } from 'date-fns';
 import * as request from 'supertest';
 import { Repository } from 'typeorm';
 
@@ -88,26 +89,28 @@ describe('calendar.controller.e2e.spec.ts', () => {
       studentId: null,
       groupId: null,
       recurringLessonId: null,
-      startAt: new Date('2026-04-06T07:00:00.000Z'),
+      startAt: new Date('2030-03-25T07:00:00.000Z'),
       duration: 60,
       status: LessonStatus.SCHEDULED,
     });
 
     const result = await request(httpServer)
       .get('/calendar/available-slots')
-      .query({ startDate: '2026-04-06', duration: 60 })
+      .query({ startDate: '2030-03-25', duration: 60 })
       .set('Authorization', `Bearer ${token}`)
       .expect(HttpStatus.OK);
 
     expect(result.body).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ date: '2026-04-06', startTime: '09:00' }),
-        expect.objectContaining({ date: '2026-04-06', startTime: '11:00' }),
+        expect.objectContaining({ date: '2030-03-25', startTime: '09:00' }),
+        expect.objectContaining({ date: '2030-03-25', startTime: '11:00' }),
       ]),
     );
   });
 
   it('should create recurring lesson from student card and show it in calendar week', async () => {
+    const nextMonday = format(getNextMonday(new Date()), 'yyyy-MM-dd');
+
     const teacher = await userFactory(testingModule);
     const token = jwtService.sign({ id: teacher.id, email: teacher.email });
     const student = await studentsRepository.save({
@@ -124,7 +127,7 @@ describe('calendar.controller.e2e.spec.ts', () => {
       .send({
         studentId: student.id,
         duration: 60,
-        slots: [{ date: '2026-04-06', dayOfWeek: 0, startTime: '09:00' }],
+        slots: [{ date: nextMonday, dayOfWeek: 0, startTime: '09:00' }],
       })
       .expect(HttpStatus.CREATED);
 
@@ -133,14 +136,14 @@ describe('calendar.controller.e2e.spec.ts', () => {
       expect.objectContaining({
         type: 'student',
         entityId: student.id,
-        startAt: expect.stringMatching(/^2026-04-06T/),
+        startAt: expect.stringMatching(new RegExp(`^${nextMonday}T`)),
         recurring: true,
       }),
     );
 
     const weekResult = await request(httpServer)
       .get('/calendar/week')
-      .query({ startDate: '2026-04-06' })
+      .query({ startDate: nextMonday })
       .set('Authorization', `Bearer ${token}`)
       .expect(HttpStatus.OK);
 
@@ -149,7 +152,7 @@ describe('calendar.controller.e2e.spec.ts', () => {
         expect.objectContaining({
           entityId: student.id,
           type: 'student',
-          startAt: expect.stringMatching(/^2026-04-06T/),
+          startAt: expect.stringMatching(new RegExp(`^${nextMonday}T`)),
         }),
       ]),
     );
@@ -172,7 +175,7 @@ describe('calendar.controller.e2e.spec.ts', () => {
         studentId: student.id,
         groupId: null,
         recurringLessonId: null,
-        startAt: new Date('2026-04-06T06:00:00.000Z'),
+        startAt: new Date('2030-03-25T06:00:00.000Z'),
         duration: 60,
         status: LessonStatus.COMPLETED,
       },
@@ -181,7 +184,7 @@ describe('calendar.controller.e2e.spec.ts', () => {
         studentId: student.id,
         groupId: null,
         recurringLessonId: null,
-        startAt: new Date('2026-04-13T06:00:00.000Z'),
+        startAt: new Date('2030-04-01T06:00:00.000Z'),
         duration: 60,
         status: LessonStatus.SCHEDULED,
       },
@@ -222,7 +225,7 @@ describe('calendar.controller.e2e.spec.ts', () => {
       studentId: student.id,
       groupId: null,
       recurringLessonId: null,
-      startAt: new Date('2026-04-06T06:00:00.000Z'),
+      startAt: new Date('2030-03-25T06:00:00.000Z'),
       duration: 60,
       status: LessonStatus.SCHEDULED,
     });
@@ -268,7 +271,7 @@ describe('calendar.controller.e2e.spec.ts', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({
         studentId: student.id,
-        date: '2026-04-06',
+        date: '2030-03-25',
         startTime: '09:00',
         duration: 60,
       })
@@ -278,7 +281,7 @@ describe('calendar.controller.e2e.spec.ts', () => {
       expect.objectContaining({
         entityId: student.id,
         type: 'student',
-        startAt: expect.stringMatching(/^2026-04-06T/),
+        startAt: expect.stringMatching(/^2030-03-25T/),
         recurring: false,
       }),
     );
