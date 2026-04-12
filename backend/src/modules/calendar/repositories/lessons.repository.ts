@@ -62,6 +62,22 @@ export class LessonsRepository {
     });
   }
 
+  public async countCompletedByStudents(
+    teacherId: string,
+  ): Promise<{ studentId: string; total: number }[]> {
+    const rows = await this.repository
+      .createQueryBuilder('l')
+      .select('l.student_id', 'studentId')
+      .addSelect('COUNT(*)', 'total')
+      .where('l.teacher_id = :teacherId', { teacherId })
+      .andWhere('l.status = :status', { status: LessonStatus.COMPLETED })
+      .andWhere('l.student_id IS NOT NULL')
+      .groupBy('l.student_id')
+      .getRawMany<{ studentId: string; total: string }>();
+
+    return rows.map((r) => ({ studentId: r.studentId, total: Number(r.total) }));
+  }
+
   public async findPaginated(
     teacherId: string,
     filter: { studentId?: string; groupId?: string },

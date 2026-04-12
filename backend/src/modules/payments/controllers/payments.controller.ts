@@ -1,9 +1,11 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
   Query,
   Request,
@@ -18,6 +20,7 @@ import { CreatePaymentDto } from '../dto/create-payment.dto';
 import { PaginatedPaymentsDto } from '../dto/paginated-payments.dto';
 import { PaymentDto } from '../dto/payment.dto';
 import { PaymentsQueryDto } from '../dto/payments-query.dto';
+import { StudentBalanceDto } from '../dto/student-balance.dto';
 import { PaymentsService } from '../services/payments.service';
 
 @ApiTags('Payments')
@@ -36,6 +39,21 @@ export class PaymentsController {
   ): Promise<PaymentDto> {
     const payment = await this.paymentsService.create(req.user!.id, data);
     return transformToDto(PaymentDto, payment);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete payment' })
+  public async delete(@Request() req: RequestExtended, @Param('id') id: string): Promise<void> {
+    await this.paymentsService.delete(req.user!.id, id);
+  }
+
+  @Get('students/balances')
+  @ApiOperation({ summary: 'Get balances for all students' })
+  @ApiOkResponse({ type: [StudentBalanceDto] })
+  public async getStudentsBalances(@Request() req: RequestExtended): Promise<StudentBalanceDto[]> {
+    const balances = await this.paymentsService.getStudentsBalances(req.user!.id);
+    return balances.map((b) => transformToDto(StudentBalanceDto, b));
   }
 
   @Get()

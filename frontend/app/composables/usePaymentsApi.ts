@@ -52,6 +52,10 @@ class PaymentsHttpApi extends PaymentsApi {
   public fetchStudentBalance(studentId: string): Promise<StudentBalance> {
     return this.request<StudentBalance>(`/students/${studentId}/balance`)
   }
+
+  public removePayment(id: string): Promise<void> {
+    return this.request<void>(`${this.baseUrl}/${id}`, { method: 'DELETE' })
+  }
 }
 
 export function usePaymentsApi() {
@@ -63,5 +67,6 @@ export function usePaymentsApi() {
     getPayments: (params?: Parameters<PaymentsHttpApi['listPayments']>[0]) =>
       paymentsApi.listPayments(params),
     getStudentBalance: (studentId: string) => paymentsApi.fetchStudentBalance(studentId),
+    deletePayment: (id: string) => paymentsApi.removePayment(id),
   }
 }

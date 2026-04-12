@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 import {
   CreatePayment,
@@ -56,6 +56,51 @@ export class PaymentsService {
       page,
       limit,
     };
+  }
+
+  public async delete(teacherId: string, id: string): Promise<void> {
+    const deleted = await this.paymentsRepository.deleteOne(id, teacherId);
+    if (!deleted) {
+      throw new NotFoundException('Payment not found');
+    }
+  }
+
+  public async getStudentsBalances(teacherId: string): Promise<StudentBalance[]> {
+    const students = await this.studentsService.findAll(teacherId);
+
+    if (!students.length) return [];
+
+    const [paidAmounts, paidLessonsCounts, completedCounts] = await Promise.all([
+      this.paymentsRepository.sumAmountByStudents(teacherId),
+      this.paymentsRepository.sumLessonsCountByStudents(teacherId),
+      this.lessonsRepository.countCompletedByStudents(teacherId),
+    ]);
+
+    const paidAmountMap = new Map(paidAmounts.map((r) => [r.studentId, r.total]));
+    const paidLessonsMap = new Map(paidLessonsCounts.map((r) => [r.studentId, r.total]));
+    const completedMap = new Map(completedCounts.map((r) => [r.studentId, r.total]));
+
+    return students.map((student) => {
+      const totalPaid = paidAmountMap.get(student.id) ?? 0;
+      const paidLessonsCount = paidLessonsMap.get(student.id) ?? 0;
+      const completedCount = completedMap.get(student.id) ?? 0;
+      const totalCharged = completedCount * student.price;
+      const unpaidLessons = Math.max(0, completedCount - paidLessonsCount);
+      const isOverdue =
+        student.paymentType === 'prepaid'
+          ? unpaidLessons > 0
+          : unpaidLessons >= student.paymentThresholdLessons;
+
+      return {
+        studentId: student.id,
+        totalPaid,
+        totalCharged,
+        balance: totalPaid - totalCharged,
+        paidLessonsCount,
+        unpaidLessons,
+        isOverdue,
+      };
+    });
   }
 
   public async getStudentBalance(teacherId: string, studentId: string): Promise<StudentBalance> {

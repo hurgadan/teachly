@@ -39,6 +39,41 @@ export class PaymentsRepository {
     return { items, total };
   }
 
+  public async deleteOne(id: string, teacherId: string): Promise<boolean> {
+    const result = await this.repository.delete({ id, teacherId });
+    return (result.affected ?? 0) > 0;
+  }
+
+  public async sumAmountByStudents(
+    teacherId: string,
+  ): Promise<{ studentId: string; total: number }[]> {
+    const rows = await this.repository
+      .createQueryBuilder('p')
+      .select('p.student_id', 'studentId')
+      .addSelect('COALESCE(SUM(p.amount), 0)', 'total')
+      .where('p.teacher_id = :teacherId', { teacherId })
+      .andWhere('p.student_id IS NOT NULL')
+      .groupBy('p.student_id')
+      .getRawMany<{ studentId: string; total: string }>();
+
+    return rows.map((r) => ({ studentId: r.studentId, total: Number(r.total) }));
+  }
+
+  public async sumLessonsCountByStudents(
+    teacherId: string,
+  ): Promise<{ studentId: string; total: number }[]> {
+    const rows = await this.repository
+      .createQueryBuilder('p')
+      .select('p.student_id', 'studentId')
+      .addSelect('COALESCE(SUM(p.lessons_count), 0)', 'total')
+      .where('p.teacher_id = :teacherId', { teacherId })
+      .andWhere('p.student_id IS NOT NULL')
+      .groupBy('p.student_id')
+      .getRawMany<{ studentId: string; total: string }>();
+
+    return rows.map((r) => ({ studentId: r.studentId, total: Number(r.total) }));
+  }
+
   public async sumByStudent(teacherId: string, studentId: string): Promise<number> {
     const result = await this.repository
       .createQueryBuilder('p')
