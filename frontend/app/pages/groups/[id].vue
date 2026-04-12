@@ -198,15 +198,13 @@ onMounted(async () => {
       </div>
     </div>
 
-    <ModalsScheduleModal
+    <ModalsCreateLessonModal
       v-if="group"
       :open="showScheduleModal"
-      :entity-name="form.name"
-      :entity-id="group.id"
-      entity-type="group"
+      :group-id="group.id"
       :default-duration="form.duration"
       @close="showScheduleModal = false"
-      @saved="showScheduleModal = false"
+      @created="showScheduleModal = false"
     />
   </div>
 

@@ -426,14 +426,12 @@ onMounted(async () => {
       </template>
     </div>
 
-    <ModalsScheduleModal
+    <ModalsCreateLessonModal
       :open="showScheduleModal"
-      :entity-name="`${student.firstName} ${student.lastName}`"
-      :entity-id="student.id"
-      entity-type="student"
+      :student-id="student.id"
       :default-duration="form.duration"
       @close="showScheduleModal = false"
-      @saved="showScheduleModal = false"
+      @created="showScheduleModal = false; void loadLessons()"
     />
     <ModalsAddPaymentModal
       :open="showPaymentModal"
