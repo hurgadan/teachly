@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { addDays, format, parseISO, startOfWeek } from 'date-fns'
 import type { AvailableSlot } from '~/types/calendar'
 import type { Group } from '~/types/groups'
 import type { Student } from '~/types/students'
@@ -245,34 +246,22 @@ function getSlotEndTime(startTime: string) {
   return minutesToTime(timeToMinutes(startTime) + form.duration)
 }
 
-function toLocalDateStr(date: Date): string {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
-}
-
 function getWeekStartDate() {
-  const current = new Date()
-  const mondayOffset = current.getDay() === 0 ? -6 : 1 - current.getDay()
-  current.setDate(current.getDate() + mondayOffset)
-  return toLocalDateStr(current)
+  return format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd')
 }
 
 function shiftWeek(startDate: string, offsetDays: number) {
-  const next = new Date(`${startDate}T00:00:00`)
-  next.setDate(next.getDate() + offsetDays)
-  return toLocalDateStr(next)
+  return format(addDays(parseISO(startDate), offsetDays), 'yyyy-MM-dd')
 }
 
 function buildWeekDays(startDate: string) {
   const labels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+  const start = parseISO(startDate)
   return Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(`${startDate}T00:00:00`)
-    date.setDate(date.getDate() + index)
+    const date = addDays(start, index)
     return {
       short: labels[index],
-      dateStr: toLocalDateStr(date),
+      dateStr: format(date, 'yyyy-MM-dd'),
       dateLabel: date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
       dayOfWeek: index,
     }

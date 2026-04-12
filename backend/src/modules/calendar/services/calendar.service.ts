@@ -76,7 +76,7 @@ export class CalendarService {
       const occupied = dayLessons.map((lesson) => {
         const { minutes } = utcToLocal(lesson.startAt, profile.timezone);
         return {
-          start: minutes,
+          start: minutes - profile.bufferMinutesAfterLesson,
           end: minutes + lesson.duration + profile.bufferMinutesAfterLesson,
         };
       });

@@ -134,12 +134,15 @@ describe('CalendarService', () => {
 
     const result = await service.getAvailableSlots('teacher-1', '2030-03-25', 60);
 
-    expect(result).toContainEqual(
+    // 09:00–10:00 заканчивается ровно в начале занятия — буферного зазора нет → недоступен
+    expect(result).not.toContainEqual(
       expect.objectContaining({ date: '2030-03-25', startTime: '09:00' }),
     );
+    // 11:15 — первый слот после занятия (10:00–11:00) + буфер 15 мин → доступен
     expect(result).toContainEqual(
       expect.objectContaining({ date: '2030-03-25', startTime: '11:15' }),
     );
+    // 10:15 внутри занятия → недоступен
     expect(result).not.toContainEqual(
       expect.objectContaining({ date: '2030-03-25', startTime: '10:15' }),
     );
