@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, DeepPartial, FindOptionsWhere, In, Repository } from 'typeorm';
+import { Between, DeepPartial, FindOptionsWhere, In, MoreThanOrEqual, Repository } from 'typeorm';
 
 import { LessonStatus } from '../../../_contracts/calendar';
 import { LessonEntity } from '../dao/lesson.entity';
@@ -87,6 +87,10 @@ export class LessonsRepository {
     return { items, total };
   }
 
+  public async findById(id: string, teacherId: string): Promise<LessonEntity | null> {
+    return this.repository.findOne({ where: { id, teacherId } });
+  }
+
   public async updateStatus(
     id: string,
     teacherId: string,
@@ -94,5 +98,25 @@ export class LessonsRepository {
   ): Promise<LessonEntity | null> {
     await this.repository.update({ id, teacherId }, { status });
     return this.repository.findOne({ where: { id, teacherId } });
+  }
+
+  public async updateStartAt(
+    id: string,
+    teacherId: string,
+    startAt: Date,
+  ): Promise<LessonEntity | null> {
+    await this.repository.update({ id, teacherId }, { startAt, status: LessonStatus.RESCHEDULED });
+    return this.repository.findOne({ where: { id, teacherId } });
+  }
+
+  public async cancelFutureByRecurringId(recurringLessonId: string, from: Date): Promise<void> {
+    await this.repository.update(
+      {
+        recurringLessonId,
+        status: In([LessonStatus.SCHEDULED, LessonStatus.RESCHEDULED]),
+        startAt: MoreThanOrEqual(from),
+      },
+      { status: LessonStatus.CANCELLED },
+    );
   }
 }

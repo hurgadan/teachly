@@ -18,16 +18,21 @@ describe('CalendarService', () => {
   const mockLessonsRepository = {
     createMany: jest.fn(),
     createOne: jest.fn(),
+    findById: jest.fn(),
     findByRecurringLessonsAndStartAts: jest.fn(),
     findInDateRange: jest.fn(),
     findPaginated: jest.fn(),
     updateStatus: jest.fn(),
+    updateStartAt: jest.fn(),
+    cancelFutureByRecurringId: jest.fn(),
   };
 
   const mockRecurringLessonsRepository = {
     createMany: jest.fn(),
     findAllActive: jest.fn(),
     findActiveByTeacherAndDays: jest.fn(),
+    findById: jest.fn(),
+    cancelFrom: jest.fn(),
   };
 
   const mockUsersService = {
@@ -249,6 +254,7 @@ describe('CalendarService', () => {
         duration: 60,
         status: LessonStatus.SCHEDULED,
         recurring: true,
+        recurringLessonId: 'recurring-1',
       },
     ]);
   });

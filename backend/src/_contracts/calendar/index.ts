@@ -7,3 +7,6 @@ export * from './lesson-target-type.type';
 export * from './lesson.type';
 export * from './recurring-lesson-slot.type';
 export * from './update-lesson-status.type';
+export * from './reschedule-lesson.type';
+export * from './cancel-recurring-lesson.type';
+export * from './reschedule-recurring-lesson.type';

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DeepPartial, In, Repository } from 'typeorm';
+import { DeepPartial, In, IsNull, MoreThan, Repository } from 'typeorm';
 
 import { RecurringLessonEntity } from '../dao/recurring-lesson.entity';
 
@@ -19,7 +19,7 @@ export class RecurringLessonsRepository {
 
   public async findAllActive(): Promise<RecurringLessonEntity[]> {
     return this.repository.find({
-      where: { isActive: true },
+      where: [{ cancelledFrom: IsNull() }, { cancelledFrom: MoreThan(new Date()) }],
     });
   }
 
@@ -32,11 +32,10 @@ export class RecurringLessonsRepository {
     }
 
     return this.repository.find({
-      where: {
-        teacherId,
-        dayOfWeek: In(dayOfWeeks),
-        isActive: true,
-      },
+      where: [
+        { teacherId, dayOfWeek: In(dayOfWeeks), cancelledFrom: IsNull() },
+        { teacherId, dayOfWeek: In(dayOfWeeks), cancelledFrom: MoreThan(new Date()) },
+      ],
       relations: {
         student: true,
         group: true,
@@ -46,5 +45,13 @@ export class RecurringLessonsRepository {
         startTime: 'ASC',
       },
     });
+  }
+
+  public async findById(id: string): Promise<RecurringLessonEntity | null> {
+    return this.repository.findOne({ where: { id } });
+  }
+
+  public async cancelFrom(id: string, date: Date): Promise<void> {
+    await this.repository.update(id, { cancelledFrom: date });
   }
 }

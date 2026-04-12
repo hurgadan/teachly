@@ -87,6 +87,10 @@ export class LessonsMaterializerService {
           day,
           startAt: localToUtc(day.date, recurringLesson.startTime, timezone),
         }))
+        .filter(({ day }) => {
+          if (!recurringLesson.cancelledFrom) return true;
+          return new Date(`${day.date}T00:00:00.000Z`) < recurringLesson.cancelledFrom;
+        })
         .filter(({ startAt }) => !existingKeys.has(`${recurringLesson.id}:${startAt.getTime()}`))
         .map(({ startAt }) => ({
           teacherId: recurringLesson.teacherId,

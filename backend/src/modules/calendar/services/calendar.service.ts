@@ -5,11 +5,14 @@ import { localToUtc, utcToLocal } from '../../../_common/utils/timezone';
 import { PaginatedResponse } from '../../../_contracts';
 import {
   AvailableSlot,
+  CancelRecurringLesson,
   CreateLesson,
   CreateRecurringLesson,
   Lesson,
   LessonStatus,
   LessonTargetType,
+  RescheduleLesson,
+  RescheduleRecurringLesson,
   UpdateLessonStatus,
 } from '../../../_contracts/calendar';
 import { GroupsService } from '../../groups/services/groups.service';
@@ -70,7 +73,7 @@ export class CalendarService {
 
       const dayLessons = lessons.filter((lesson) => {
         const { dateStr } = utcToLocal(lesson.startAt, profile.timezone);
-        return dateStr === weekDay.date;
+        return dateStr === weekDay.date && lesson.status !== LessonStatus.CANCELLED;
       });
 
       const occupied = dayLessons.map((lesson) => {
@@ -133,7 +136,7 @@ export class CalendarService {
         dayOfWeek: slot.dayOfWeek,
         startTime: slot.startTime,
         duration: data.duration,
-        isActive: true,
+        cancelledFrom: null,
       })),
     );
 
@@ -244,6 +247,100 @@ export class CalendarService {
     return mapEntityToLesson(lessonWithRelations);
   }
 
+  public async rescheduleLesson(
+    teacherId: string,
+    lessonId: string,
+    data: RescheduleLesson,
+  ): Promise<Lesson> {
+    const lesson = await this.lessonsRepository.findById(lessonId, teacherId);
+
+    if (!lesson) {
+      throw new BadRequestException('Lesson not found');
+    }
+
+    const profile = await this.usersService.getProfile(teacherId);
+    const startAt = localToUtc(data.date, data.startTime, profile.timezone);
+
+    if (startAt <= new Date()) {
+      throw new BadRequestException('Cannot reschedule a lesson to the past');
+    }
+
+    const availableSlots = await this.getAvailableSlots(teacherId, data.date, lesson.duration);
+    const isAvailable = availableSlots.some(
+      (slot) => slot.date === data.date && slot.startTime === data.startTime,
+    );
+
+    if (!isAvailable) {
+      throw new BadRequestException('Selected slot is not available');
+    }
+
+    const updated = await this.lessonsRepository.updateStartAt(lessonId, teacherId, startAt);
+
+    if (!updated) {
+      throw new BadRequestException('Lesson not found');
+    }
+
+    const [lessonWithRelations] = await this.lessonsRepository.findInDateRange(
+      teacherId,
+      updated.startAt,
+      updated.startAt,
+    );
+
+    return mapEntityToLesson(lessonWithRelations);
+  }
+
+  public async cancelRecurringLesson(
+    teacherId: string,
+    recurringLessonId: string,
+    data: CancelRecurringLesson,
+  ): Promise<void> {
+    const recurringLesson = await this.recurringLessonsRepository.findById(recurringLessonId);
+
+    if (!recurringLesson || recurringLesson.teacherId !== teacherId) {
+      throw new BadRequestException('Recurring lesson not found');
+    }
+
+    const cancelFrom = new Date(`${data.cancelFrom}T00:00:00.000Z`);
+
+    await Promise.all([
+      this.recurringLessonsRepository.cancelFrom(recurringLessonId, cancelFrom),
+      this.lessonsRepository.cancelFutureByRecurringId(recurringLessonId, cancelFrom),
+    ]);
+  }
+
+  public async rescheduleRecurringLesson(
+    teacherId: string,
+    recurringLessonId: string,
+    data: RescheduleRecurringLesson,
+  ): Promise<void> {
+    const recurringLesson = await this.recurringLessonsRepository.findById(recurringLessonId);
+
+    if (!recurringLesson || recurringLesson.teacherId !== teacherId) {
+      throw new BadRequestException('Recurring lesson not found');
+    }
+
+    const cancelFrom = new Date(`${data.cancelFrom}T00:00:00.000Z`);
+
+    await Promise.all([
+      this.recurringLessonsRepository.cancelFrom(recurringLessonId, cancelFrom),
+      this.lessonsRepository.cancelFutureByRecurringId(recurringLessonId, cancelFrom),
+    ]);
+
+    const [newRecurringLesson] = await this.recurringLessonsRepository.createMany([
+      {
+        teacherId,
+        studentId: recurringLesson.studentId,
+        groupId: recurringLesson.groupId,
+        dayOfWeek: data.dayOfWeek,
+        startTime: data.startTime,
+        duration: data.duration,
+        cancelledFrom: null,
+      },
+    ]);
+
+    await this.lessonsMaterializerService.materializeForRecurringLessons([newRecurringLesson]);
+  }
+
   public async recalculateTimezone(
     teacherId: string,
     oldTimezone: string,
@@ -314,6 +411,7 @@ function mapEntityToLesson(lesson: LessonEntity): Lesson {
     duration: lesson.duration,
     status: lesson.status,
     recurring: !!lesson.recurringLessonId,
+    recurringLessonId: lesson.recurringLessonId ?? null,
   };
 }
 
