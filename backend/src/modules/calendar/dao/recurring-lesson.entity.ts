@@ -59,8 +59,8 @@ export class RecurringLessonEntity {
   @Column({ type: 'int', nullable: false })
   public duration: number;
 
-  @Column({ type: 'boolean', name: 'is_active', nullable: false, default: true })
-  public isActive: boolean;
+  @Column({ type: 'timestamp', name: 'cancelled_from', nullable: true })
+  public cancelledFrom: Date | null;
 
   @OneToMany(() => LessonEntity, (lesson) => lesson.recurringLesson)
   public lessons: LessonEntity[];

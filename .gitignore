@@ -7,6 +7,7 @@ output
 coverage
 .DS_Store
 .playwright-cli
+.playwright-mcp
 .claude
 .codex
 .idea

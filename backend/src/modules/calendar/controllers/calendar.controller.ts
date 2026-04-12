@@ -18,11 +18,14 @@ import { transformToDto } from '../../../_common/utils/transform-to-dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { AvailableSlotDto } from '../dto/available-slot.dto';
 import { AvailableSlotsQueryDto } from '../dto/available-slots-query.dto';
+import { CancelRecurringLessonDto } from '../dto/cancel-recurring-lesson.dto';
 import { CreateLessonDto } from '../dto/create-lesson.dto';
 import { CreateRecurringLessonDto } from '../dto/create-recurring-lesson.dto';
 import { LessonDto } from '../dto/lesson.dto';
 import { LessonsQueryDto } from '../dto/lessons-query.dto';
 import { PaginatedLessonsDto } from '../dto/paginated-lessons.dto';
+import { RescheduleLessonDto } from '../dto/reschedule-lesson.dto';
+import { RescheduleRecurringLessonDto } from '../dto/reschedule-recurring-lesson.dto';
 import { UpdateLessonStatusDto } from '../dto/update-lesson-status.dto';
 import { CalendarService } from '../services/calendar.service';
 
@@ -113,5 +116,39 @@ export class CalendarController {
   ): Promise<LessonDto> {
     const lesson = await this.calendarService.updateLessonStatus(req.user!.id, id, data);
     return transformToDto(LessonDto, lesson);
+  }
+
+  @Patch('lessons/:id/reschedule')
+  @ApiOperation({ summary: 'Reschedule a single lesson' })
+  @ApiOkResponse({ type: LessonDto })
+  public async rescheduleLesson(
+    @Request() req: RequestExtended,
+    @Param('id') id: string,
+    @Body() data: RescheduleLessonDto,
+  ): Promise<LessonDto> {
+    const lesson = await this.calendarService.rescheduleLesson(req.user!.id, id, data);
+    return transformToDto(LessonDto, lesson);
+  }
+
+  @Patch('recurring-lessons/:id/cancel')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Cancel all future occurrences of a recurring lesson' })
+  public async cancelRecurringLesson(
+    @Request() req: RequestExtended,
+    @Param('id') id: string,
+    @Body() data: CancelRecurringLessonDto,
+  ): Promise<void> {
+    await this.calendarService.cancelRecurringLesson(req.user!.id, id, data);
+  }
+
+  @Patch('recurring-lessons/:id/reschedule')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Reschedule all future occurrences of a recurring lesson' })
+  public async rescheduleRecurringLesson(
+    @Request() req: RequestExtended,
+    @Param('id') id: string,
+    @Body() data: RescheduleRecurringLessonDto,
+  ): Promise<void> {
+    await this.calendarService.rescheduleRecurringLesson(req.user!.id, id, data);
   }
 }

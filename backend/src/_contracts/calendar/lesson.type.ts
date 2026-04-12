@@ -10,4 +10,5 @@ export interface Lesson {
   duration: number;
   status: LessonStatus;
   recurring: boolean;
+  recurringLessonId: string | null;
 }

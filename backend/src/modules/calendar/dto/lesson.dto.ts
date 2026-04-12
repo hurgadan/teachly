@@ -35,4 +35,8 @@ export class LessonDto implements Lesson {
   @ApiProperty()
   @Expose()
   public recurring: boolean;
+
+  @ApiProperty({ nullable: true })
+  @Expose()
+  public recurringLessonId: string | null;
 }

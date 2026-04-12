@@ -2,10 +2,13 @@ import { CalendarApi } from '@hurgadan/teachly-contracts'
 
 import type {
   AvailableSlot,
+  CancelRecurringLesson,
   CreateLesson,
   CreateRecurringLesson,
   Lesson,
   PaginatedResponse,
+  RescheduleLesson,
+  RescheduleRecurringLesson,
   UpdateLessonStatus,
 } from '@hurgadan/teachly-contracts'
 
@@ -85,6 +88,27 @@ class CalendarHttpApi extends CalendarApi {
   public patchLessonStatus(id: string, data: UpdateLessonStatus) {
     return this.updateLessonStatus(id, data)
   }
+
+  public patchRescheduleLesson(id: string, data: RescheduleLesson): Promise<Lesson> {
+    return this.request<Lesson>(`${this.baseUrl}/lessons/${id}/reschedule`, {
+      method: 'PATCH',
+      body: data,
+    })
+  }
+
+  public patchCancelRecurringLesson(id: string, data: CancelRecurringLesson): Promise<void> {
+    return this.request<void>(`${this.baseUrl}/recurring-lessons/${id}/cancel`, {
+      method: 'PATCH',
+      body: data,
+    })
+  }
+
+  public patchRescheduleRecurringLesson(id: string, data: RescheduleRecurringLesson): Promise<void> {
+    return this.request<void>(`${this.baseUrl}/recurring-lessons/${id}/reschedule`, {
+      method: 'PATCH',
+      body: data,
+    })
+  }
 }
 
 export function useCalendarApi() {
@@ -98,5 +122,8 @@ export function useCalendarApi() {
     getWeekLessons: (startDate?: string) => calendarApi.getWeekLessons(startDate),
     getLessons: (params: Parameters<CalendarHttpApi['fetchLessons']>[0]) => calendarApi.fetchLessons(params),
     updateLessonStatus: (id: string, data: UpdateLessonStatus) => calendarApi.patchLessonStatus(id, data),
+    rescheduleLesson: (id: string, data: RescheduleLesson) => calendarApi.patchRescheduleLesson(id, data),
+    cancelRecurringLesson: (id: string, data: CancelRecurringLesson) => calendarApi.patchCancelRecurringLesson(id, data),
+    rescheduleRecurringLesson: (id: string, data: RescheduleRecurringLesson) => calendarApi.patchRescheduleRecurringLesson(id, data),
   }
 }

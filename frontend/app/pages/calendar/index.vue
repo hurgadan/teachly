@@ -4,6 +4,8 @@ import type { Lesson } from '~/types/calendar'
 
 const { getWeekLessons } = useCalendarApi()
 const showCreateLesson = ref(false)
+const selectedLesson = ref<Lesson | null>(null)
+const showLessonDetail = ref(false)
 const { show } = useToast()
 const currentWeekStart = ref(getWeekStart())
 const weekLessons = ref<Lesson[]>([])
@@ -45,9 +47,17 @@ function getLessonStyle(lesson: { startAt: string; duration: number }) {
 }
 
 const lessonColors: Record<string, string> = {
-  completed: 'bg-success/15 border-success/30 text-success',
-  scheduled: 'bg-primary/10 border-primary/30 text-primary',
-  cancelled: 'bg-error/10 border-error/30 text-error',
+  scheduled: 'bg-blue-100 border-blue-400 text-blue-800',
+  rescheduled: 'bg-amber-100 border-amber-400 text-amber-800',
+  completed: 'bg-emerald-100 border-emerald-400 text-emerald-800',
+  cancelled: 'bg-red-100 border-red-300 text-red-400',
+}
+
+const lessonZIndex: Record<string, string> = {
+  scheduled: 'z-10',
+  rescheduled: 'z-10',
+  completed: 'z-0',
+  cancelled: 'z-0',
 }
 
 onMounted(() => {
@@ -78,6 +88,11 @@ function nextWeek() {
 function onLessonCreated() {
   showCreateLesson.value = false
   void loadWeek()
+}
+
+function openLessonDetail(lesson: Lesson) {
+  selectedLesson.value = lesson
+  showLessonDetail.value = true
 }
 
 function getWeekStart() {
@@ -114,6 +129,26 @@ function buildWeekDays(startDate: string) {
         </button>
       </template>
     </UiPageHeader>
+
+    <!-- Legend -->
+    <div class="flex flex-wrap gap-4 mb-4 text-xs">
+      <div class="flex items-center gap-1.5">
+        <span class="inline-block w-3 h-3 rounded-sm bg-blue-100 border border-blue-400" />
+        <span class="text-base-content/60">Запланировано</span>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <span class="inline-block w-3 h-3 rounded-sm bg-amber-100 border border-amber-400" />
+        <span class="text-base-content/60">Перенесено</span>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <span class="inline-block w-3 h-3 rounded-sm bg-emerald-100 border border-emerald-400" />
+        <span class="text-base-content/60">Проведено</span>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <span class="inline-block w-3 h-3 rounded-sm bg-red-100 border border-red-300" />
+        <span class="text-base-content/60">Отменено</span>
+      </div>
+    </div>
 
     <!-- Week navigation -->
     <div class="flex items-center justify-between mb-4">
@@ -180,8 +215,9 @@ function buildWeekDays(startDate: string) {
             <div
               v-for="lesson in getDayLessons(day.dateStr)"
               :key="lesson.id"
-              :class="['absolute left-0.5 right-0.5 rounded border text-xs p-1.5 overflow-hidden cursor-pointer hover:shadow-md transition-shadow', lessonColors[lesson.status]]"
+              :class="['absolute left-0.5 right-0.5 rounded border text-xs p-1.5 overflow-hidden cursor-pointer hover:shadow-md transition-shadow', lessonColors[lesson.status], lessonZIndex[lesson.status]]"
               :style="getLessonStyle({ startAt: lesson.startAt, duration: lesson.duration })"
+              @click="openLessonDetail(lesson)"
             >
               <p class="font-medium truncate leading-tight">{{ lesson.title }}</p>
               <p class="opacity-60 text-[10px] mt-0.5">{{ getLocalTimeStr(lesson.startAt) }} · {{ lesson.duration }} мин</p>
@@ -202,7 +238,8 @@ function buildWeekDays(startDate: string) {
           <div
             v-for="lesson in getDayLessons(day.dateStr)"
             :key="lesson.id"
-            class="card bg-base-100 shadow-sm"
+            class="card bg-base-100 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+            @click="openLessonDetail(lesson)"
           >
             <div class="card-body p-3 flex-row items-center gap-3">
               <div class="text-sm font-mono font-medium w-12 shrink-0 text-base-content/60">
@@ -223,5 +260,6 @@ function buildWeekDays(startDate: string) {
     </div>
 
     <ModalsCreateLessonModal :open="showCreateLesson" :week-start="currentWeekStart" @close="showCreateLesson = false" @created="onLessonCreated" />
+    <ModalsLessonDetailModal :open="showLessonDetail" :lesson="selectedLesson" @close="showLessonDetail = false" @updated="loadWeek()" />
   </div>
 </template>
