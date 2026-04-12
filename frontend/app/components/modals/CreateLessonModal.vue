@@ -4,7 +4,13 @@ import type { AvailableSlot } from '~/types/calendar'
 import type { Group } from '~/types/groups'
 import type { Student } from '~/types/students'
 
-const props = defineProps<{ open: boolean; weekStart?: string }>()
+const props = defineProps<{
+  open: boolean
+  weekStart?: string
+  studentId?: string
+  groupId?: string
+  defaultDuration?: number
+}>()
 const emit = defineEmits<{ close: []; created: [] }>()
 
 const { createLesson, createRecurringLesson, getAvailableSlots } = useCalendarApi()
@@ -31,7 +37,7 @@ const workSchedule = ref<Array<{ dayOfWeek: number; isWorkday: boolean }>>([])
 const apiSlots = ref<AvailableSlot[]>([])
 const selectedSlot = ref<AvailableSlot | null>(null)
 const selectedSlots = ref<Array<{ date: string; dayOfWeek: number; startTime: string }>>([])
-const weekStartDate = ref(props.weekStart ?? getWeekStartDate())
+const weekStartDate = ref(getWeekStartDate())
 const activeDay = ref('0')
 
 const activeStudents = computed(() => students.value.filter((student) => student.status === 'active'))
@@ -56,8 +62,8 @@ watch(() => props.open, async (isOpen) => {
   loadingOptions.value = true
   try {
     const [loadedStudents, loadedGroups, schedules] = await Promise.all([
-      listStudents(),
-      listGroups(),
+      props.studentId ? Promise.resolve([]) : listStudents(),
+      props.studentId ? Promise.resolve([]) : listGroups(),
       getMyWorkSchedule(),
     ])
     students.value = loadedStudents
@@ -117,9 +123,13 @@ watch(() => form.duration, async () => {
 
 async function handleSubmit() {
   const payload =
-    form.type === 'student'
-      ? { studentId: form.studentId }
-      : { groupId: form.groupId }
+    props.studentId
+      ? { studentId: props.studentId }
+      : props.groupId
+        ? { groupId: props.groupId }
+        : form.type === 'student'
+          ? { studentId: form.studentId }
+          : { groupId: form.groupId }
 
   if (mode.value === 'one-time' && !selectedSlot.value) {
     return
@@ -232,10 +242,10 @@ function selectedCountForDay(dayOfWeek: number) {
 
 function resetForm() {
   mode.value = 'one-time'
-  form.type = 'student'
-  form.studentId = ''
-  form.groupId = ''
-  form.duration = 60
+  form.type = props.groupId ? 'group' : 'student'
+  form.studentId = props.studentId ?? ''
+  form.groupId = props.groupId ?? ''
+  form.duration = props.defaultDuration ?? 60
   weekStartDate.value = props.weekStart ?? getWeekStartDate()
   activeDay.value = '0'
   selectedSlot.value = null
@@ -304,34 +314,36 @@ function minutesToTime(value: number) {
           </button>
         </div>
 
-        <div role="tablist" class="tabs tabs-bordered">
-          <button type="button" role="tab" :class="['tab', { 'tab-active': form.type === 'student' }]" @click="form.type = 'student'">
-            Ученик
-          </button>
-          <button type="button" role="tab" :class="['tab', { 'tab-active': form.type === 'group' }]" @click="form.type = 'group'">
-            Группа
-          </button>
-        </div>
+        <template v-if="!studentId && !groupId">
+          <div role="tablist" class="tabs tabs-bordered">
+            <button type="button" role="tab" :class="['tab', { 'tab-active': form.type === 'student' }]" @click="form.type = 'student'">
+              Ученик
+            </button>
+            <button type="button" role="tab" :class="['tab', { 'tab-active': form.type === 'group' }]" @click="form.type = 'group'">
+              Группа
+            </button>
+          </div>
 
-        <fieldset v-if="form.type === 'student'" class="fieldset">
-          <legend class="fieldset-legend">Ученик *</legend>
-          <select v-model="form.studentId" class="select select-bordered w-full" required>
-            <option value="" disabled>Выберите</option>
-            <option v-for="s in activeStudents" :key="s.id" :value="s.id">
-              {{ s.firstName }} {{ s.lastName || '' }}
-            </option>
-          </select>
-        </fieldset>
+          <fieldset v-if="form.type === 'student'" class="fieldset">
+            <legend class="fieldset-legend">Ученик *</legend>
+            <select v-model="form.studentId" class="select select-bordered w-full" required>
+              <option value="" disabled>Выберите</option>
+              <option v-for="s in activeStudents" :key="s.id" :value="s.id">
+                {{ s.firstName }} {{ s.lastName || '' }}
+              </option>
+            </select>
+          </fieldset>
 
-        <fieldset v-if="form.type === 'group'" class="fieldset">
-          <legend class="fieldset-legend">Группа *</legend>
-          <select v-model="form.groupId" class="select select-bordered w-full" required>
-            <option value="" disabled>Выберите</option>
-            <option v-for="g in groups" :key="g.id" :value="g.id">
-              {{ g.name }}
-            </option>
-          </select>
-        </fieldset>
+          <fieldset v-else class="fieldset">
+            <legend class="fieldset-legend">Группа *</legend>
+            <select v-model="form.groupId" class="select select-bordered w-full" required>
+              <option value="" disabled>Выберите</option>
+              <option v-for="g in groups" :key="g.id" :value="g.id">
+                {{ g.name }}
+              </option>
+            </select>
+          </fieldset>
+        </template>
 
         <fieldset class="fieldset">
           <legend class="fieldset-legend">Длительность</legend>
@@ -350,7 +362,9 @@ function minutesToTime(value: number) {
 
         <div class="flex items-center justify-between">
           <button type="button" class="btn btn-ghost btn-sm" @click="previousWeek">
-            Назад
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+            </svg>
           </button>
           <div class="text-center">
             <p class="font-medium">
@@ -359,7 +373,9 @@ function minutesToTime(value: number) {
             <p class="text-xs text-base-content/50">Выберите день и слот</p>
           </div>
           <button type="button" class="btn btn-ghost btn-sm" @click="nextWeek">
-            Вперёд
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+            </svg>
           </button>
         </div>
 
@@ -443,7 +459,7 @@ function minutesToTime(value: number) {
             :disabled="
               loading ||
               (mode === 'one-time' ? !selectedSlot : selectedSlots.length === 0) ||
-              (form.type === 'student' ? !form.studentId : !form.groupId)
+              (!studentId && !groupId && (form.type === 'student' ? !form.studentId : !form.groupId))
             "
           >
             <span v-if="loading" class="loading loading-spinner loading-sm" />
