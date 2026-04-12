@@ -41,6 +41,10 @@ class StudentsHttpApi extends StudentsApi {
     return this.request<StudentBalance>(`${this.baseUrl}/${id}/balance`)
   }
 
+  public fetchAllBalances(): Promise<StudentBalance[]> {
+    return this.request<StudentBalance[]>('/payments/students/balances')
+  }
+
   public listStudents(search?: string) {
     return this.getStudents(search)
   }
@@ -72,5 +76,6 @@ export function useStudentsApi() {
     getStudentBalance: (id: string) => studentsApi.fetchStudentBalance(id),
     listStudents: (search?: string) => studentsApi.listStudents(search),
     updateStudent: (id: string, payload: UpdateStudentPayload) => studentsApi.updateStudentEntry(id, payload),
+    getStudentsBalances: () => studentsApi.fetchAllBalances(),
   }
 }

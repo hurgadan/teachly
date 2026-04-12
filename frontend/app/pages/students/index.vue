@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import type { Student } from '~/types/students'
+import type { StudentBalance } from '@hurgadan/teachly-contracts'
 
-const { listStudents } = useStudentsApi()
+const { listStudents, getStudentsBalances } = useStudentsApi()
 
 const students = ref<Student[]>([])
+const balancesMap = ref<Map<string, StudentBalance>>(new Map())
 const loading = ref(true)
 
 const search = ref('')
@@ -42,6 +44,15 @@ async function loadStudents(query = '') {
   }
 }
 
+async function loadBalances() {
+  try {
+    const balancesData = await getStudentsBalances()
+    balancesMap.value = new Map(balancesData.map(b => [b.studentId, b]))
+  } catch {
+    // балансы некритичны, ошибку игнорируем
+  }
+}
+
 watch(search, (value) => {
   if (searchDebounce.value) clearTimeout(searchDebounce.value)
   searchDebounce.value = setTimeout(() => {
@@ -50,7 +61,7 @@ watch(search, (value) => {
 })
 
 onMounted(async () => {
-  await loadStudents()
+  await Promise.all([loadStudents(), loadBalances()])
 })
 
 function onStudentCreated(id: string) {
@@ -97,6 +108,7 @@ const statusClass: Record<string, string> = {
               <th>Статус</th>
               <th>Цена</th>
               <th>Длительность</th>
+              <th>Долг</th>
               <th />
             </tr>
           </thead>
@@ -127,6 +139,15 @@ const statusClass: Record<string, string> = {
               </td>
               <td class="font-medium">{{ formatPrice(student.price) }}</td>
               <td>{{ student.duration }} мин</td>
+              <td>
+                <span
+                  v-if="balancesMap.get(student.id)?.isOverdue"
+                  class="badge badge-sm badge-error"
+                >
+                  {{ formatPrice(Math.abs(balancesMap.get(student.id)!.balance)) }}
+                </span>
+                <span v-else class="text-base-content/30">—</span>
+              </td>
               <td>
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 text-base-content/30">
                   <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
@@ -168,6 +189,12 @@ const statusClass: Record<string, string> = {
           <div class="flex items-center gap-4 mt-2 text-sm text-base-content/70">
             <span>{{ formatPrice(student.price) }}</span>
             <span>{{ student.duration }} мин</span>
+            <span
+              v-if="balancesMap.get(student.id)?.isOverdue"
+              class="badge badge-xs badge-error ml-auto"
+            >
+              Долг {{ formatPrice(Math.abs(balancesMap.get(student.id)!.balance)) }}
+            </span>
           </div>
         </div>
       </NuxtLink>

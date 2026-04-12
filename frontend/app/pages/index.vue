@@ -2,14 +2,16 @@
 import type { Student } from '~/types/students'
 import type { Lesson } from '~/types/calendar'
 import type { Payment } from '~/types/payments'
+import type { StudentBalance } from '@hurgadan/teachly-contracts'
 
-const { listStudents } = useStudentsApi()
+const { listStudents, getStudentsBalances } = useStudentsApi()
 const { getWeekLessons } = useCalendarApi()
 const { getPayments } = usePaymentsApi()
 
 const students = ref<Student[]>([])
 const lessons = ref<Lesson[]>([])
 const recentPayments = ref<Payment[]>([])
+const overdueBalances = ref<StudentBalance[]>([])
 const loading = ref(true)
 
 const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -78,14 +80,16 @@ const showPaymentModal = ref(false)
 async function loadData() {
   try {
     loading.value = true
-    const [studentsData, lessonsData, paymentsData] = await Promise.all([
+    const [studentsData, lessonsData, paymentsData, balancesData] = await Promise.all([
       listStudents(),
       getWeekLessons(),
       getPayments({ page: 1, limit: 50 }),
+      getStudentsBalances(),
     ])
     students.value = studentsData
     lessons.value = lessonsData
     recentPayments.value = paymentsData.items
+    overdueBalances.value = balancesData.filter(b => b.isOverdue)
   } catch {
     // ignore errors on dashboard
   } finally {
@@ -168,6 +172,32 @@ onMounted(() => {
 
       <!-- Sidebar -->
       <div class="space-y-4">
+        <!-- Overdue students -->
+        <div v-if="!loading && overdueBalances.length > 0" class="card bg-base-100 shadow-sm border border-error/30">
+          <div class="card-body p-4 lg:p-6">
+            <h2 class="card-title text-base text-error">
+              Должники
+              <span class="badge badge-error badge-sm">{{ overdueBalances.length }}</span>
+            </h2>
+            <div class="space-y-2 mt-1">
+              <NuxtLink
+                v-for="balance in overdueBalances"
+                :key="balance.studentId"
+                :to="`/students/${balance.studentId}`"
+                class="flex items-center justify-between py-1 hover:text-primary transition-colors"
+              >
+                <span class="text-sm truncate">
+                  {{ students.find(s => s.id === balance.studentId)?.firstName }}
+                  {{ students.find(s => s.id === balance.studentId)?.lastName || '' }}
+                </span>
+                <span class="text-sm font-medium text-error shrink-0 ml-2">
+                  {{ formatPrice(Math.abs(balance.balance)) }}
+                </span>
+              </NuxtLink>
+            </div>
+          </div>
+        </div>
+
         <!-- Recent payments -->
         <div class="card bg-base-100 shadow-sm">
           <div class="card-body p-4 lg:p-6">
